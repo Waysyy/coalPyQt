@@ -1,22 +1,20 @@
+import math
 import sys
+from tkinter import Image
 
-import public as public
-from PyQt5 import QtWidgets, QtCore
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QFileDialog, QMainWindow, QTextEdit, QVBoxLayout, \
-    QGraphicsScene, QGraphicsView, QComboBox, QLineEdit, QHBoxLayout, QLabel, QSpacerItem, QSizePolicy
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-from PyQt5.uic.properties import QtGui
-from matplotlib import cm
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
-from mpl_toolkits.mplot3d import Axes3D
-from matplotlib.animation import FuncAnimation
-from numpy import var
+import PIL
 import matplotlib.colors as mcolors
-
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from PyQt5 import QtWidgets, QtCore
+from PyQt5.QtWidgets import QPushButton, QFileDialog, QMainWindow, QVBoxLayout, \
+    QGraphicsScene, QGraphicsView, QComboBox, QLineEdit, QHBoxLayout, QLabel, QSpacerItem, QSizePolicy, QRadioButton, \
+    QMessageBox
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+from PyQt5.QtWidgets import QInputDialog
+import random
 
 class MainWindow(QMainWindow):
 
@@ -27,6 +25,7 @@ class MainWindow(QMainWindow):
         # self.canvas = FigureCanvas(plt.figure())
 
         # Set button properties
+
         self.pushButton_2 = QPushButton("3D График", self)
         self.pushButton_2.setMinimumSize(QtCore.QSize(0, 40))
         self.pushButton_3 = QPushButton("2D График", self)
@@ -35,6 +34,17 @@ class MainWindow(QMainWindow):
         self.pushButton_clear.setMinimumSize(QtCore.QSize(0, 40))
         self.pushButton_add_layer = QPushButton("Добавить слой", self)
         self.pushButton_add_layer.setMinimumSize(QtCore.QSize(0, 40))
+        self.radioButton3d = QRadioButton("3D слои", self)
+        self.radioButton3d.setMaximumSize(QtCore.QSize(60, 40))
+        self.radioButton2d = QRadioButton("2D слои", self)
+        self.radioButton2d.setMaximumSize(QtCore.QSize(60, 40))
+        self.pushButton_add_elipses = QPushButton("Круговой график", self)
+        self.pushButton_add_elipses.setMinimumSize(QtCore.QSize(0, 40))
+        self.pushButton_add_image = QPushButton("Добавить карту", self)
+        self.pushButton_add_image.setMinimumSize(QtCore.QSize(0, 40))
+        self.pushButton_calc = QPushButton("Расчитать оседание", self)
+        self.pushButton_calc.setMinimumSize(QtCore.QSize(0, 40))
+
 
         # Set layout properties
         layout = QVBoxLayout()
@@ -43,17 +53,32 @@ class MainWindow(QMainWindow):
         layout_buttons.addWidget(self.pushButton_3)
         layout_buttons.addWidget(self.pushButton_clear)
         layout_buttons.addWidget(self.pushButton_add_layer)
+        layout_buttons.addWidget(self.radioButton3d)
+        layout_buttons.addWidget(self.radioButton2d)
+        layout_buttons.addWidget(self.pushButton_add_elipses)
+        layout_buttons.addWidget(self.pushButton_add_image)
+        layout_buttons.addWidget(self.pushButton_calc)
+        layout_buttons.setSpacing(5)  # <-- set spacing between elements to 5 pixels
+
         layout.addLayout(layout_buttons)
 
         # Set text input and combo box for adding layers
-        self.label_height = QLabel("Высота слоя:")
+        self.label_height = QLabel("Ширина области:")
         self.textbox_height = QLineEdit()
+        self.textbox_height_2 = QLineEdit()
+        self.label_long = QLabel("Длина области:")
+        self.textbox_long = QLineEdit()
+        self.textbox_long_2 = QLineEdit()
         self.label_layer = QLabel("Название слоя:")
         self.combobox_layer = QComboBox()
-        self.combobox_layer.addItems(["Слой 1", "Слой 2", "Слой 3", "Слой 4", "Слой 5"])
+        self.combobox_layer.addItems(["Почва", "Гранит", "Песчаник", "Глина", "Кварцит", "Уголь"])
         layout_input = QHBoxLayout()
         layout_input.addWidget(self.label_height)
         layout_input.addWidget(self.textbox_height)
+        layout_input.addWidget(self.textbox_height_2)
+        layout_input.addWidget(self.label_long)
+        layout_input.addWidget(self.textbox_long)
+        layout_input.addWidget(self.textbox_long_2)
         layout_input.addWidget(self.label_layer)
         layout_input.addWidget(self.combobox_layer)
         layout.addLayout(layout_input)
@@ -71,6 +96,9 @@ class MainWindow(QMainWindow):
         self.pushButton_3.clicked.connect(self.Graph2D)
         self.pushButton_clear.clicked.connect(self.clearGraph)
         self.pushButton_add_layer.clicked.connect(self.addLayer)
+        self.pushButton_add_elipses.clicked.connect(self.GraphElips2D)
+        self.pushButton_add_image.clicked.connect(self.AddImage)
+        self.pushButton_calc.clicked.connect(self.CalcSubsidence)
 
         # Set window properties
         self.setGeometry(50, 50, 1300, 1000)
@@ -78,12 +106,11 @@ class MainWindow(QMainWindow):
 
         self.scene = QGraphicsScene(self)
         self.view = QGraphicsView(self.scene, self)
-        self.view.setGeometry(50, 100, 1200, 800)
+        self.view.setGeometry(50, 130, 1200, 800)
         self.view.setStyleSheet("background-color: white;")
         self.view.setHorizontalScrollBarPolicy(1)
         self.view.setVerticalScrollBarPolicy(1)
 
-        self.fig = plt.Figure()
         self.fig = plt.Figure(figsize=(10, 5))
 
         # Create two subplots with 1 row and 2 columns
@@ -97,84 +124,280 @@ class MainWindow(QMainWindow):
         self.canvas = FigureCanvas(self.fig)
         self.scene.addWidget(self.canvas)
 
+        # Add navigation toolbar
+        toolbar = NavigationToolbar(self.canvas, self)
+        self.addToolBar(toolbar)
+
+
         self.layers = []
+
+        self.soil_height = []
+        self.granite_height = []
+        self.sandstone_height = []
+        self.clay_height = []
+        self.quartzite_height = []
+        self.coal_height = []
+        self.h = 0
+        self.matrix = None
 
     button2D = 0
     button3D = 0
     def addLayer(self):
-        if self.button2D == 1:
-            layer_height = float(self.textbox_height.text())
+        layer_name = self.combobox_layer.currentText()
+        # Get layer height from user input
+        start_height, ok1 = QInputDialog.getDouble(self, "Enter Start Height", "Start Height:")
+        if not ok1:
+            return
+        end_height, ok2 = QInputDialog.getDouble(self, "Enter End Height", "End Height:")
+        if not ok2:
+            return
+
+        color = 'red'
+        if layer_name == 'Почва':
+            color = 'brown'
+            self.soil_height.append(abs(start_height-end_height))
+        if layer_name == 'Гранит':
+            color = 'gray'
+            self.granite_height.append(abs(start_height - end_height))
+        if layer_name == 'Песчаник':
+            color = 'yellow'
+            self.sandstone_height.append(abs(start_height - end_height))
+        if layer_name == 'Глина':
+            color = 'blue'
+            self.clay_height.append(abs(start_height - end_height))
+        if layer_name == 'Кварцит':
+            color = 'pink'
+            self.quartzite_height.append(abs(start_height - end_height))
+        if layer_name == 'Уголь':
+            color = 'black'
+            self.coal_height.append(abs(start_height - end_height))
+        if self.radioButton2d.isChecked():
+
+
             layer_name = self.combobox_layer.currentText()
-            self.layers.append((layer_name, layer_height))
+            self.layers.append((layer_name, start_height, end_height))
 
             # Plot all layers
-            heights = [layer[1] for layer in self.layers]
-            xlim = self.ax2d.get_xlim()  # Получаем значения оси x графика
-            self.ax2d.plot(xlim, [heights[0], heights[0]], label=self.layers[0][0])
-            for i in range(1, len(self.layers)):
-                self.ax2d.plot(xlim, [heights[i], heights[i]], label=self.layers[i][0])
-                self.ax2d.fill_between(xlim, heights[i - 1], heights[i], alpha=0.2)
-            self.canvas.draw()
-        if self.button3D == 1:
-            layer_height = float(self.textbox_height.text())
-            layer_name = self.combobox_layer.currentText()
-            self.layers.append((layer_name, layer_height))
-            xlim = self.ax3d.get_xlim()
-            ylim = self.ax3d.get_ylim()
-            x = [xlim[0], xlim[1], xlim[1], xlim[0]]
-            y = [ylim[0], ylim[0], ylim[1], ylim[1]]
-            z = [layer_height, layer_height, layer_height, layer_height]
-            z_data = []
-            for layer in self.layers:
-                layer_height = layer[1]
-                z_data.append([layer_height] * 4)  # 4 - количество вершин квадрата на грани
+            for i, layer in enumerate(self.layers):
+                start, end = layer[1], layer[2]
+                # Use a color from the list or repeat if necessary
+                self.ax2d.axhspan(start, end,  facecolor=color, alpha=0.2)
+            # Modify x-axis limits
+            if self.textbox_long.text() and self.textbox_long_2.text():
+                try:
+                    self.ax2d.set_xlim([float(self.textbox_long.text()), float(self.textbox_long_2.text())])
+                except ValueError:
+                    QtWidgets.QMessageBox.critical(self, "Ошибка", "Проверьте правильность ввода координат")
+                    return
+            else:
+                QtWidgets.QMessageBox.critical(self, "Ошибка", "Введите значения координат")
+                return
 
-            # Преобразование в массив NumPy для использования с plot_surface
-            z_data = np.array(z_data)
+            self.canvas.draw()
+        if self.radioButton3d.isChecked():
+            # создать пустой список для текущего слоя
+            current_layer = []
+            layer_name = self.combobox_layer.currentText()
+
+            start_height = float(start_height)
+            current_layer.append(start_height)
+
+            end_height = float(end_height)
+            current_layer.append(end_height)
+
+            # добавить текущий слой в список слоев
+            self.layers.append(current_layer)
+
+            # нарисовать текущий слой
+            if self.textbox_long.text() and self.textbox_long_2.text() and self.textbox_height.text() and self.textbox_height_2.text():
+                try:
+                    xlim = float(self.textbox_long.text().replace(',', '.'))
+                    xlim2 = float(self.textbox_long_2.text().replace(',', '.'))
+                    ylim = float(self.textbox_height.text().replace(',', '.'))
+                    ylim2 = float(self.textbox_height_2.text().replace(',', '.'))
+                except ValueError:
+                    QtWidgets.QMessageBox.critical(self, "Ошибка", "Проверьте правильность ввода координат")
+                    return
+            else:
+                QtWidgets.QMessageBox.critical(self, "Ошибка", "Введите значения координат")
+                return
+            x = [xlim, xlim2, xlim2, xlim]
+            y = [ylim, ylim, ylim2, ylim2]
+            z = [start_height, start_height, end_height, end_height]
+            z_data = np.array([[start_height] * 4, [end_height] * 4])
+
+
 
             # Построение поверхности с прозрачностью alpha=0.2
-            # Список цветовых значений
-            colors = ["red", "orange", "yellow", "green", "blue", "purple"]
-
-            # Создаем colormap на основе списка цветов
-            cmap = mcolors.ListedColormap(colors)
-            self.ax3d.plot_surface(x, y, z_data, alpha=0.2, cmap='jet')
+            self.ax3d.plot_surface(x, y, z_data, alpha=0.2, color=color)
             self.ax3d.plot(x, y, z, alpha=0.2)
+
             self.canvas.draw()
 
     def Graph2D(self):
-            path = self.showDialog()
-            if path:
-                self.button2D = 1
+        path = self.showDialog()
+        if path:
+            self.button2D = 1
+            try:
                 df = pd.read_excel(path)
                 df = df.replace(',', '.', regex=True)
                 Y = df.values.astype(np.float64)
                 for row in Y:
                     self.ax2d.plot(row)
                 self.canvas.draw()
+            except ValueError as e:
+                QMessageBox.warning(self, "Ошибка формата",
+                                    "Не удалось прочитать файл. Проверьте, что данные в файле имеют правильный формат. Ошибка: {}".format(
+                                        str(e)))
 
     def Graph3D(self):
         path = self.showDialog()
         if path:
             self.button3D = 1
-            df = pd.read_excel(path)
-            df = df.replace(',', '.', regex=True)
-            X, Y = np.meshgrid(range(df.shape[1]), range(df.shape[0]))
-            Z = df.values.astype(np.float64)
-            # fig = self.canvas.figure
-            # fig.clear()  # Очистить график
-            # ax = fig.add_subplot(111, projection='3d')
-            self.ax3d.plot_surface(X, Y, Z, cmap='viridis')
-            self.canvas.draw()  # Перерисовать график на FigureCanvas
+            try:
+                df = pd.read_excel(path)
+                df = df.replace(',', '.', regex=True)
+                X, Y = np.meshgrid(range(df.shape[1]), range(df.shape[0]))
+                Z = df.values.astype(np.float64)
+                # fig = self.canvas.figure
+                # fig.clear()  # Очистить график
+                # ax = fig.add_subplot(111, projection='3d')
+                self.ax3d.plot_surface(X, Y, Z, cmap='viridis')
+                self.canvas.draw()  # Перерисовать график на FigureCanvas
+            except ValueError as e:
+                QMessageBox.warning(self, "Ошибка формата",
+                                    "Не удалось прочитать файл. Проверьте, что данные в файле имеют правильный формат. Ошибка: {}".format(
+                                        str(e)))
+
+
+    def GraphElips2D(self):
+        path = self.showDialog()
+        if path:
+            try:
+                df = pd.read_excel(path)
+                df = df.replace(',', '.', regex=True)
+                cols_to_drop = df.columns[(df == 0).all()]
+
+                # Удаляем выбранные столбцы
+                df = df.drop(cols_to_drop, axis=1)
+                X, Y = np.meshgrid(range(df.shape[1]), range(df.shape[0]))
+                Z = df.values.astype(np.float64)
+                self.ax2d.contour(X, Y, Z)
+
+                self.canvas.draw()
+            except ValueError as e:
+                QMessageBox.warning(self, "Ошибка формата",
+                                    "Не удалось прочитать файл. Проверьте, что данные в файле имеют правильный формат. Ошибка: {}".format(
+                                        str(e)))
+
+    def AddImage(self):
+        path = self.showDialog()
+        if path:
+            try:
+                img = PIL.Image.open(path)
+                img.verify()
+                img = np.asarray(PIL.Image.open(path))
+                # self.ax2d.imshow(img)
+
+                # Prompt user for x and y coordinates
+
+                x1, ok = QInputDialog.getDouble(self, "координата ", "X1:", 0.0, -1e6, 1e6, 2)
+                x, ok = QInputDialog.getDouble(self, "координата", "X2:", 0.0, -1e6, 1e6, 2)
+                if ok:
+                    x = float(x)
+                    x1 = float(x1)
+                    y1, y_ok = QInputDialog.getDouble(self, "координата", "Y1:", 0.0, -1e6, 1e6, 2)
+                    y, y_ok = QInputDialog.getDouble(self, "координата", "Y2:", 0.0, -1e6, 1e6, 2)
+
+                    if y_ok:
+                        y = float(y)
+                        y1 = float(y1)
+                        self.ax2d.imshow(img, extent=[x1, x, y1, y], aspect='equal')
+                        # self.ax2d.scatter(x, y, marker='o', color='r')
+
+                        self.canvas.draw()
+            except Exception as e:
+                QMessageBox.warning(self, "Ошибка", str(e), QMessageBox.Ok)
 
     def clearGraph(self):
-        self.ax.clear()
+        self.ax2d.clear()
+        self.ax3d.clear()
         self.layers = []
         self.canvas.draw()
 
     def showDialog(self):
         fname, _ = QFileDialog.getOpenFileName(self, 'выбрать файл', 'C:\\Users\\ntart\\PycharmProjects\\pythonProject3')
         return fname
+
+
+
+
+
+    def CalcSubsidence(self):
+        try:
+            def generate_symmetric_matrix(min_value, max_value, W):
+
+                def sigmoid(x, a=0.002):
+                    return 1 / (1 + math.exp(-a * x))
+                check_max = 0
+                fix_value = 0
+                size = W*100
+                midpoint = (size - 1) / 2
+                values = []
+                for i in range(int(size)):
+                    row = []
+                    for j in range(int(size)):
+                        distance_from_midpoint = math.sqrt((i - midpoint) ** 2 + (j - midpoint) ** 2)
+                        value = sigmoid(distance_from_midpoint) * (max_value - min_value) + min_value
+                        if value >= W and check_max == 0:
+                            fix_value = value
+                            check_max = 1
+                        if value >= W and check_max > 0:
+                            value = fix_value
+                            row.append(value)
+                        else:
+                            row.append(value)
+                    values.append(row)
+                return values
+
+            long_plast, ok1 = QInputDialog.getDouble(self, "Длина срезаемого пласта", "длина:")
+            if not ok1:
+                return
+            width_plast, ok2 = QInputDialog.getDouble(self, "Ширина срезаемого пласта", "ширина:")
+            if not ok2:
+                return
+            height_plast, ok3 = QInputDialog.getDouble(self, "Высота срезаемого пласта", "высота:")
+            if not ok3:
+                return
+            C = float(long_plast) * float(width_plast) * float(height_plast) # срезаемое количество угля, м3/м2
+            k = math.pow(10, -7) # коэффициент фильтрации грунта, м/с
+            h1 = self.coal_height[0] # толщина пласта угля, м
+            p = 1.3 * (abs(float(self.textbox_long.text()) - float(self.textbox_long_2.text())) * abs(float(self.textbox_height.text()) - float(self.textbox_height_2.text())) * self.coal_height[0]) # плотность угля, кг/м3
+            S = k * C * h1 / p # оседание
+            h = S * p / (k * C) # глубина оседания
+            O = 10 # угол наклона поверхности восстановления
+            L = 0.5 * 10 / k # длина области воздействия, которая определяется конфигурацией системы
+
+            W = (2 * S * L) / (h1 * math.tan(O))
+
+            ylim = self.ax2d.get_ylim()
+            max_value = float(ylim[1])
+            min_value = float(ylim[1]) - h
+
+            self.matrix = generate_symmetric_matrix(min_value, max_value, W)
+
+            df = pd.DataFrame(self.matrix)
+
+            file_name, ok = QInputDialog.getText(self, "Введите название файла для сохранения", "Имя файла:")
+            if ok:
+                file_name = str(file_name) + '.xlsx'
+                df.to_excel(file_name, index=False)
+            else:
+                return
+
+        except Exception as e:
+            print(f"Ошибка: {e}")
+            return
 
 
 if __name__ == '__main__':
