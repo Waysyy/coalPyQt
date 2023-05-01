@@ -688,7 +688,7 @@ class MainWindow(QMainWindow):
             print(n_osedanie)
             print(deltaDv)
             print(h)
-            self.matrix = generate_symmetric_matrix1(min_value, max_value, max_shirina) # метод Бёргера
+            self.matrix = generate_symmetric_matrix1(min_value, max_value, max_shirina) # 
 
 
 
