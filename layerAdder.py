@@ -62,7 +62,7 @@ class MainWindow(QMainWindow):
         self.canvas = FigureCanvas(self.figure)
         self.axes = self.figure.add_subplot(111)
 
-        # список для хранения прямоугольников
+        # список для хранения слоев
         self.rectangles = []
 
         # список для хранения разбиений
