@@ -117,29 +117,30 @@ class MainWindow(QMainWindow):
         part = float(self.line_edit_part.text())
         density = float(self.line_edit_density.text())
 
-        if self.check_first != 0:
-            x = 0
-            y = self.final_Y
-            self.final_Y += y + height
-        if self.check_first == 0:
-            x = 0
-            y = 0 - height
-            self.check_first += 1
-
         # Выбор цвета слоя
         color_dialog = QColorDialog()
         color = color_dialog.getColor()
         if color.isValid():
             rect_color = color.name()
         else:
-            rect_color = 'r'  # По умолчанию красный цвет
+            return
+
 
         # Ввод названия слоя
         name, ok = QInputDialog.getText(self, 'Введите название', 'Название:')
         if ok:
             rect_name = name
         else:
-            rect_name = ''  # Пустая строка, если название не введено
+            return
+
+        if self.check_first != 0:
+            x = 0
+            y = self.final_Y
+            self.final_Y = y + height
+        if self.check_first == 0:
+            x = 0
+            y = 0 - height
+            self.check_first += 1
 
         rect = patches.Rectangle((x, y), width, height, facecolor=rect_color)
         rect.set_label(rect_name)
@@ -177,6 +178,8 @@ class MainWindow(QMainWindow):
         if self.rectangles:
             self.rectangles.pop()
             self.draw_rectangles()
+            self.final_Y = self.final_Y - float(self.line_edit_thickness.text())
+            self.current_partitions.pop()
 
     def draw_rectangles(self):
         self.axes.clear()
