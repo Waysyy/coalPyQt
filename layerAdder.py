@@ -31,7 +31,7 @@ class MainWindow(QMainWindow):
         self.line_edit_density = QLineEdit(self)
         self.line_edit_density.setGeometry(120, 130, 100, 30)
 
-        self.label_part = QLabel("Количество разбиений:", self)
+        self.label_part = QLabel("Длина участка в метрах:", self)
         self.label_part.setGeometry(10, 90, 150, 30)
         self.line_edit_part = QLineEdit(self)
         self.line_edit_part.setGeometry(160, 90, 100, 30)
@@ -102,10 +102,11 @@ class MainWindow(QMainWindow):
         self.current_partitions = []
         # Заголовки столбцов в Excel
         self.sheet.cell(row=1, column=1).value = "Номер разбиения"
-        self.sheet.cell(row=1, column=2).value = "Название"
-        self.sheet.cell(row=1, column=3).value = "Плотность"
-        self.sheet.cell(row=1, column=4).value = "Толщина"
-        self.sheet.cell(row=1, column=5).value = "Цвет"
+        self.sheet.cell(row=1, column=2).value = "Номер подразбиения"
+        self.sheet.cell(row=1, column=3).value = "Название"
+        self.sheet.cell(row=1, column=4).value = "Плотность"
+        self.sheet.cell(row=1, column=5).value = "Толщина"
+        self.sheet.cell(row=1, column=6).value = "Цвет"
 
     def toggle_auto_save(self, state):
         self.auto_save_enabled = state == Qt.Checked
@@ -152,7 +153,7 @@ class MainWindow(QMainWindow):
             self.line_edit_width.setReadOnly(True)
             self.is_width_locked = True
 
-        if float(self.line_edit_part.text()) == 0:
+        if float(self.line_edit_part.text()) == 1:
             self.button_save.setEnabled(True)
 
         # Добавление информации о слое в текущее разбиение
@@ -165,7 +166,7 @@ class MainWindow(QMainWindow):
         self.current_partitions.append(current_partition)
 
     def next_partition(self):
-        if float(self.line_edit_part.text()) > 0:
+        if float(self.line_edit_part.text()) > 1:
             self.save_current_partition()  # Сохранение информации о текущем разбиении
             self.rectangles = []
             self.draw_rectangles()
@@ -173,6 +174,8 @@ class MainWindow(QMainWindow):
             part -= 1
             self.line_edit_part.setText(str(part))
             self.button_save.setEnabled(False)
+            self.final_Y = 0
+            self.check_first = 0
 
     def undo_action(self):
         if self.rectangles:
@@ -203,21 +206,44 @@ class MainWindow(QMainWindow):
             real_row = 1
             for row in range(partition_number):
                 for i, partition in enumerate(self.current_partitions):
-                    self.sheet.cell(row=real_row, column=1).value = row+1
-                    self.sheet.cell(row=real_row, column=2).value = partition['name']
-                    self.sheet.cell(row=real_row, column=3).value = partition['density']
-                    self.sheet.cell(row=real_row, column=4).value = partition['thickness']
-                    self.sheet.cell(row=real_row, column=5).value = partition['color']
-                    real_row +=1
+
+                    if float(partition['thickness']) > float(self.line_edit_width.text()):
+                        for j in range(round(float(partition['thickness'])/float(self.line_edit_width.text()))):
+                            self.sheet.cell(row=real_row, column=1).value = row + 1
+                            self.sheet.cell(row=real_row, column=2).value = j
+                            self.sheet.cell(row=real_row, column=3).value = partition['name']
+                            self.sheet.cell(row=real_row, column=4).value = partition['density']
+                            self.sheet.cell(row=real_row, column=5).value = str(float(self.line_edit_width.text()))
+                            self.sheet.cell(row=real_row, column=6).value = partition['color']
+                            real_row += 1
+                    else:
+                        self.sheet.cell(row=real_row, column=1).value = row + 1
+                        self.sheet.cell(row=real_row, column=2).value = i
+                        self.sheet.cell(row=real_row, column=3).value = partition['name']
+                        self.sheet.cell(row=real_row, column=4).value = partition['density']
+                        self.sheet.cell(row=real_row, column=5).value = partition['thickness']
+                        self.sheet.cell(row=real_row, column=6).value = partition['color']
+                    real_row += 1
 
         else:
             for i, partition in enumerate(self.current_partitions):
                 row = i + (partition_number - 1) * len(self.current_partitions) + 2
-                self.sheet.cell(row=row, column=1).value = partition_number
-                self.sheet.cell(row=row, column=2).value = partition['name']
-                self.sheet.cell(row=row, column=3).value = partition['density']
-                self.sheet.cell(row=row, column=4).value = partition['thickness']
-                self.sheet.cell(row=row, column=5).value = partition['color']
+                if float(partition['thickness']) > float(self.line_edit_width.text()):
+                    for j in range(round(float(partition['thickness']) / float(self.line_edit_width.text()))):
+                        self.sheet.cell(row=row, column=1).value = partition_number
+                        self.sheet.cell(row=row, column=2).value = j
+                        self.sheet.cell(row=row, column=3).value = partition['name']
+                        self.sheet.cell(row=row, column=4).value = partition['density']
+                        self.sheet.cell(row=row, column=5).value = str(float(self.line_edit_width.text()))
+                        self.sheet.cell(row=row, column=6).value = partition['color']
+                        row+=1
+                else:
+                    self.sheet.cell(row=row, column=1).value = partition_number
+                    self.sheet.cell(row=row, column=2).value = i
+                    self.sheet.cell(row=row, column=3).value = partition['name']
+                    self.sheet.cell(row=row, column=4).value = partition['density']
+                    self.sheet.cell(row=row, column=5).value = partition['thickness']
+                    self.sheet.cell(row=row, column=6).value = partition['color']
             self.current_partitions = []
 
 
