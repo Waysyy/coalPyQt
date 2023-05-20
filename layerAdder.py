@@ -126,7 +126,7 @@ class MainWindow(QMainWindow):
             y = 0 - height
             self.check_first += 1
 
-        # Выбор цвета прямоугольника
+        # Выбор цвета слоя
         color_dialog = QColorDialog()
         color = color_dialog.getColor()
         if color.isValid():
@@ -134,7 +134,7 @@ class MainWindow(QMainWindow):
         else:
             rect_color = 'r'  # По умолчанию красный цвет
 
-        # Ввод названия прямоугольника
+        # Ввод названия слоя
         name, ok = QInputDialog.getText(self, 'Введите название', 'Название:')
         if ok:
             rect_name = name
@@ -146,7 +146,7 @@ class MainWindow(QMainWindow):
         self.rectangles.append(rect)
         self.draw_rectangles()
 
-        # Блокировка изменения ширины после добавления первого прямоугольника
+        # Блокировка изменения ширины после добавления первого слоя
         if not self.is_width_locked:
             self.line_edit_width.setReadOnly(True)
             self.is_width_locked = True
@@ -154,7 +154,7 @@ class MainWindow(QMainWindow):
         if float(self.line_edit_part.text()) == 0:
             self.button_save.setEnabled(True)
 
-        # Добавление информации о прямоугольнике в текущее разбиение
+        # Добавление информации о слое в текущее разбиение
         current_partition = {
             'name': rect_name,
             'density': density,
