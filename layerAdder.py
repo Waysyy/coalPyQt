@@ -1,7 +1,7 @@
 import sys
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget, \
-    QColorDialog, QInputDialog, QCheckBox, QFileDialog
+    QColorDialog, QInputDialog, QCheckBox, QFileDialog, QMessageBox
 from PyQt5.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -12,8 +12,8 @@ import openpyxl
 class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
-        self.setWindowTitle("График с прямоугольниками")
-        self.setGeometry(100, 100, 800, 600)
+        self.setWindowTitle("График со слоями")
+        self.setGeometry(100, 100, 800, 1000)
 
         # виджеты интерфейса
         self.label_thickness = QLabel("Толщина:", self)
@@ -48,7 +48,7 @@ class MainWindow(QMainWindow):
         self.button_next.setGeometry(10, 250, 210, 30)
         self.button_next.clicked.connect(self.next_partition)
 
-        self.button_undo = QPushButton(QIcon("back.png"), "", self)
+        self.button_undo = QPushButton("Отмена", self)
         self.button_undo.setGeometry(10, 290, 210, 30)
         self.button_undo.clicked.connect(self.undo_action)
 
@@ -113,12 +113,44 @@ class MainWindow(QMainWindow):
         self.button_save.setEnabled(self.auto_save_enabled)
 
     def add_rectangle(self):
-        height = float(self.line_edit_thickness.text())
-        width = float(self.line_edit_width.text())
-        part = float(self.line_edit_part.text())
-        density = float(self.line_edit_density.text())
+        if (self.line_edit_thickness.text()).isdigit():
+            height = float(self.line_edit_thickness.text())
+        else:
+            msg = QMessageBox()
+            msg.setWindowTitle("Ошибка")
+            msg.setText("Некорректное значение")
+            msg.setIcon(QMessageBox.Warning)
+            msg.exec_()
+            return
+        if (self.line_edit_width.text()).isdigit():
+            width = float(self.line_edit_width.text())
+        else:
+            msg = QMessageBox()
+            msg.setWindowTitle("Ошибка")
+            msg.setText("Некорректное значение")
+            msg.setIcon(QMessageBox.Warning)
+            msg.exec_()
+            return
+        if (self.line_edit_part.text()).isdigit():
+            part = float(self.line_edit_part.text())
+        else:
+            msg = QMessageBox()
+            msg.setWindowTitle("Ошибка")
+            msg.setText("Некорректное значение")
+            msg.setIcon(QMessageBox.Warning)
+            msg.exec_()
+            return
+        if (self.line_edit_density.text()).isdigit():
+            density = float(self.line_edit_density.text())
+        else:
+            msg = QMessageBox()
+            msg.setWindowTitle("Ошибка")
+            msg.setText("Некорректное значение")
+            msg.setIcon(QMessageBox.Warning)
+            msg.exec_()
+            return
 
-        # Выбор цвета слоя
+            # Выбор цвета слоя
         color_dialog = QColorDialog()
         color = color_dialog.getColor()
         if color.isValid():
@@ -166,6 +198,15 @@ class MainWindow(QMainWindow):
         self.current_partitions.append(current_partition)
 
     def next_partition(self):
+        if (self.line_edit_part.text()).isdigit():
+            part = float(self.line_edit_part.text())
+        else:
+            msg = QMessageBox()
+            msg.setWindowTitle("Ошибка")
+            msg.setText("Ошибка разбиений")
+            msg.setIcon(QMessageBox.Warning)
+            msg.exec_()
+            return
         if float(self.line_edit_part.text()) > 1:
             self.save_current_partition()  # Сохранение информации о текущем разбиении
             self.rectangles = []
@@ -195,56 +236,70 @@ class MainWindow(QMainWindow):
         self.canvas.draw()
 
     def save_partitions(self):
-        self.save_current_partition()  # Сохранение информации о последнем разбиении
-        file_name, _ = QFileDialog.getSaveFileName(self, "Сохранить разбиения", "", "Excel Files (*.xlsx)")
-        if file_name:
-            self.workbook.save(file_name)
+        if self.save_current_partition():
+            self.save_current_partition()  # Сохранение информации о последнем разбиении
+            file_name, _ = QFileDialog.getSaveFileName(self, "Сохранить разбиения", "", "Excel Files (*.xlsx)")
+            if file_name:
+                self.workbook.save(file_name)
+        else:
+            msg = QMessageBox()
+            msg.setWindowTitle("Ошибка")
+            msg.setText("Сохранение невозможно")
+            msg.setIcon(QMessageBox.Warning)
+            msg.exec_()
+            return
+
 
     def save_current_partition(self):
-        partition_number = int(float(self.line_edit_part.text()))
-        if self.auto_save_enabled:
-            real_row = 1
-            for row in range(partition_number):
-                for i, partition in enumerate(self.current_partitions):
+        if (self.line_edit_part.text()).isdigit():
+            partition_number = int(float(self.line_edit_part.text()))
+            if self.auto_save_enabled:
+                real_row = 1
+                for row in range(partition_number):
+                    for i, partition in enumerate(self.current_partitions):
 
-                    if float(partition['thickness']) > float(self.line_edit_width.text()):
-                        for j in range(round(float(partition['thickness'])/float(self.line_edit_width.text()))):
+                        if float(partition['thickness']) > float(self.line_edit_width.text()):
+                            for j in range(round(float(partition['thickness']) / float(self.line_edit_width.text()))):
+                                self.sheet.cell(row=real_row, column=1).value = row + 1
+                                self.sheet.cell(row=real_row, column=2).value = j
+                                self.sheet.cell(row=real_row, column=3).value = partition['name']
+                                self.sheet.cell(row=real_row, column=4).value = partition['density']
+                                self.sheet.cell(row=real_row, column=5).value = str(float(self.line_edit_width.text()))
+                                self.sheet.cell(row=real_row, column=6).value = partition['color']
+                                real_row += 1
+                        else:
                             self.sheet.cell(row=real_row, column=1).value = row + 1
-                            self.sheet.cell(row=real_row, column=2).value = j
+                            self.sheet.cell(row=real_row, column=2).value = i
                             self.sheet.cell(row=real_row, column=3).value = partition['name']
                             self.sheet.cell(row=real_row, column=4).value = partition['density']
-                            self.sheet.cell(row=real_row, column=5).value = str(float(self.line_edit_width.text()))
+                            self.sheet.cell(row=real_row, column=5).value = partition['thickness']
                             self.sheet.cell(row=real_row, column=6).value = partition['color']
-                            real_row += 1
-                    else:
-                        self.sheet.cell(row=real_row, column=1).value = row + 1
-                        self.sheet.cell(row=real_row, column=2).value = i
-                        self.sheet.cell(row=real_row, column=3).value = partition['name']
-                        self.sheet.cell(row=real_row, column=4).value = partition['density']
-                        self.sheet.cell(row=real_row, column=5).value = partition['thickness']
-                        self.sheet.cell(row=real_row, column=6).value = partition['color']
-                    real_row += 1
+                        real_row += 1
 
-        else:
-            for i, partition in enumerate(self.current_partitions):
-                row = i + (partition_number - 1) * len(self.current_partitions) + 2
-                if float(partition['thickness']) > float(self.line_edit_width.text()):
-                    for j in range(round(float(partition['thickness']) / float(self.line_edit_width.text()))):
+            else:
+                for i, partition in enumerate(self.current_partitions):
+                    row = i + (partition_number - 1) * len(self.current_partitions) + 2
+                    if float(partition['thickness']) > float(self.line_edit_width.text()):
+                        for j in range(round(float(partition['thickness']) / float(self.line_edit_width.text()))):
+                            self.sheet.cell(row=row, column=1).value = partition_number
+                            self.sheet.cell(row=row, column=2).value = j
+                            self.sheet.cell(row=row, column=3).value = partition['name']
+                            self.sheet.cell(row=row, column=4).value = partition['density']
+                            self.sheet.cell(row=row, column=5).value = str(float(self.line_edit_width.text()))
+                            self.sheet.cell(row=row, column=6).value = partition['color']
+                            row += 1
+                    else:
                         self.sheet.cell(row=row, column=1).value = partition_number
-                        self.sheet.cell(row=row, column=2).value = j
+                        self.sheet.cell(row=row, column=2).value = i
                         self.sheet.cell(row=row, column=3).value = partition['name']
                         self.sheet.cell(row=row, column=4).value = partition['density']
-                        self.sheet.cell(row=row, column=5).value = str(float(self.line_edit_width.text()))
+                        self.sheet.cell(row=row, column=5).value = partition['thickness']
                         self.sheet.cell(row=row, column=6).value = partition['color']
-                        row+=1
-                else:
-                    self.sheet.cell(row=row, column=1).value = partition_number
-                    self.sheet.cell(row=row, column=2).value = i
-                    self.sheet.cell(row=row, column=3).value = partition['name']
-                    self.sheet.cell(row=row, column=4).value = partition['density']
-                    self.sheet.cell(row=row, column=5).value = partition['thickness']
-                    self.sheet.cell(row=row, column=6).value = partition['color']
-            self.current_partitions = []
+                self.current_partitions = []
+            return True
+        else:
+            return False
+
 
 
 if __name__ == '__main__':
