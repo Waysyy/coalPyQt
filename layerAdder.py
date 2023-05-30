@@ -73,6 +73,7 @@ class MainWindow(QMainWindow):
         self.button_edit_grid = QPushButton("Подготовка к редактированию", self)
         self.button_edit_grid.setGeometry(10, 210, 210, 30)
         self.button_edit_grid.clicked.connect(self.create_grid)
+        self.button_edit_grid.setVisible(False)
 
         self.button_save = QPushButton("Сохранить разбиения", self)
         self.button_save.setGeometry(10, 330, 210, 30)
@@ -98,7 +99,7 @@ class MainWindow(QMainWindow):
         self.radio_edit = QRadioButton("Режим редактирования сетки", self)
         self.radio_edit.setGeometry(10, 410, 150, 40)
         self.radio_edit.toggled.connect(self.toggle_edit)
-        self.radio_edit.setVisible(True)
+        self.radio_edit.setVisible(False)
 
         # объект для графика Matplotlib
         self.figure = Figure()
@@ -450,6 +451,8 @@ class MainWindow(QMainWindow):
         self.radio_vertical.setVisible(self.net_enabled)
         self.line_edit_width.setVisible(self.net_enabled)
         self.button_auto_part.setVisible(self.net_enabled)
+        self.button_edit_grid.setVisible(self.net_enabled)
+        self.radio_edit.setVisible(self.net_enabled)
         self.button_next.setVisible(not self.net_enabled)
         self.button_save.setVisible(not self.net_enabled)
         self.checkbox_auto.setVisible(not self.net_enabled)
@@ -770,70 +773,93 @@ class MainWindow(QMainWindow):
         self.canvas.draw()
 
     def save_grid_information(self):
-        self.vertical_lines = sorted(self.vertical_lines, key=lambda line: line['x0'])
-        self.horizontal_lines = sorted(self.horizontal_lines, key=lambda line: line['y0'])
-
-        vert_wall = []
-        horiz_wall = []
-
-
-
-        first_w = 0
-        x_pred = 0
-
-        for line_vertical in self.vertical_lines:
-
-            x1_vert = line_vertical['x1']
-
-            if first_w == 0:
-
-                x1_cell = x1_vert
-                x_pred = x1_vert
-                first_w += 1
-                continue
-            if first_w > 0:
-                vert_wall.append([x_pred, x1_vert])
-                x_pred = x1_vert
-                continue
-            first_w += 1
-
-        first_w = 0
-        x_pred = 0
-
-        for line_horizontal in self.horizontal_lines:
-
-            y1_hor = line_horizontal['y1']
-
-            if first_w == 0:
-                y_pred = y1_hor
-                first_w += 1
-                continue
-            if first_w > 0:
-                horiz_wall.append([y_pred, y1_hor])
-                y_pred = y1_hor
-                continue
-            first_w += 1
-
-        all_coordinates = []
-        for line_horizontal in horiz_wall:
-            for line_vertical in vert_wall:
-                all_coordinates.append([line_horizontal[0],line_vertical[0],line_horizontal[1],line_vertical[1]])
+        # self.vertical_lines = sorted(self.vertical_lines, key=lambda line: line['x0'])
+        # self.horizontal_lines = sorted(self.horizontal_lines, key=lambda line: line['y0'])
+        #
+        # vert_wall = []
+        # horiz_wall = []
+        #
+        #
+        #
+        # first_w = 0
+        # x_pred = 0
+        #
+        # for line_vertical in self.vertical_lines:
+        #
+        #     x1_vert = line_vertical['x1']
+        #
+        #     if first_w == 0:
+        #
+        #         x1_cell = x1_vert
+        #         x_pred = x1_vert
+        #         first_w += 1
+        #         continue
+        #     if first_w > 0:
+        #         vert_wall.append([x_pred, x1_vert])
+        #         x_pred = x1_vert
+        #         continue
+        #     first_w += 1
+        #
+        # first_w = 0
+        # x_pred = 0
+        #
+        # for line_horizontal in self.horizontal_lines:
+        #
+        #     y1_hor = line_horizontal['y1']
+        #
+        #     if first_w == 0:
+        #         y_pred = y1_hor
+        #         first_w += 1
+        #         continue
+        #     if first_w > 0:
+        #         horiz_wall.append([y_pred, y1_hor])
+        #         y_pred = y1_hor
+        #         continue
+        #     first_w += 1
+        #
+        # all_coordinates = []
+        # for line_horizontal in horiz_wall:
+        #     for line_vertical in vert_wall:
+        #         all_coordinates.append([line_horizontal[0],line_vertical[0],line_horizontal[1],line_vertical[1]])
 
         cells = []
+
+        #сохранение клеток
+        # for layer in self.info_layers:
+        #     x0_layer = layer['x0']
+        #     x1_layer = layer['x1']
+        #     y0_layer = layer['y0']
+        #     y1_layer = layer['y1']
+        #     for coordinates in all_coordinates:
+        #         if coordinates[1] >= x0_layer and coordinates[0] >= y0_layer and coordinates[3] <= x1_layer and coordinates[2] <= y1_layer:
+        #             cell_info = {
+        #                 'name': layer['name'],
+        #                 'color': layer['color'],
+        #                 'x0': coordinates[1],
+        #                 'x1': coordinates[3],
+        #                 'y0': coordinates[0],
+        #                 'y1': coordinates[2]
+        #
+        #             }
+        #             cells.append(cell_info)
+
         for layer in self.info_layers:
             x0_layer = layer['x0']
             x1_layer = layer['x1']
             y0_layer = layer['y0']
             y1_layer = layer['y1']
-            for coordinates in all_coordinates:
-                if coordinates[1] >= x0_layer and coordinates[0] >= y0_layer and coordinates[3] <= x1_layer and coordinates[2] <= y1_layer:
+            for index, coordinates in enumerate(self.triangle_coordinates):
+                if coordinates['x0'] >= x0_layer and coordinates['y0'] >= y0_layer and coordinates['x1'] <= x1_layer and coordinates['y1'] <= y1_layer \
+                    and coordinates['x2'] >= x0_layer and coordinates['x2'] <= x1_layer and coordinates['y2'] >= y0_layer and coordinates['y2'] <= y1_layer:
                     cell_info = {
                         'name': layer['name'],
                         'color': layer['color'],
-                        'x0': coordinates[1],
-                        'x1': coordinates[3],
-                        'y0': coordinates[0],
-                        'y1': coordinates[2]
+                        'x0': coordinates['x0'],
+                        'x1': coordinates['x1'],
+                        'x2': coordinates['x2'],
+                        'y0': coordinates['y0'],
+                        'y1': coordinates['y1'],
+                        'y2': coordinates['y2']
 
                     }
                     cells.append(cell_info)
@@ -841,7 +867,7 @@ class MainWindow(QMainWindow):
         workbook = openpyxl.Workbook()
         sheet = workbook.active
 
-        headers = ['Name', 'Color', 'x0', 'x1', 'y0', 'y1']
+        headers = ['Name', 'Color', 'x0', 'x1', 'x2', 'y0', 'y1', 'y2']
 
         for col, header in enumerate(headers, start=1):
             sheet.cell(row=1, column=col).value = header
@@ -851,8 +877,10 @@ class MainWindow(QMainWindow):
             sheet.cell(row=index, column=2).value = cell_info['color']
             sheet.cell(row=index, column=3).value = cell_info['x0']
             sheet.cell(row=index, column=4).value = cell_info['x1']
-            sheet.cell(row=index, column=5).value = cell_info['y0']
-            sheet.cell(row=index, column=6).value = cell_info['y1']
+            sheet.cell(row=index, column=5).value = cell_info['x2']
+            sheet.cell(row=index, column=6).value = cell_info['y0']
+            sheet.cell(row=index, column=7).value = cell_info['y1']
+            sheet.cell(row=index, column=8).value = cell_info['y2']
 
         root = Tk()
         root.withdraw()
