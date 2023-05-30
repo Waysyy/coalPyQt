@@ -5,8 +5,9 @@ import numpy as np
 import pandas as pd
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget, \
-    QColorDialog, QInputDialog, QCheckBox, QFileDialog, QMessageBox, QRadioButton
+    QColorDialog, QInputDialog, QCheckBox, QFileDialog, QMessageBox, QRadioButton, QComboBox
 from PyQt5.QtCore import Qt
+from matplotlib.backend_bases import MouseButton
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import matplotlib.patches as patches
@@ -101,6 +102,9 @@ class MainWindow(QMainWindow):
         self.radio_edit.toggled.connect(self.toggle_edit)
         self.radio_edit.setVisible(False)
 
+        self.combobox_layer = QComboBox()
+        self.combobox_layer.addItems(["Почва", "Гранит", "Песчаник", "Глина", "Кварцит", "Уголь"]) # по хорошему все названия подтянуть из БД
+
         # объект для графика Matplotlib
         self.figure = Figure()
         self.canvas = FigureCanvas(self.figure)
@@ -115,6 +119,7 @@ class MainWindow(QMainWindow):
         # вертикальый компоновщик и добавление виджетов
         layout = QVBoxLayout()
         layout.addWidget(self.checkbox_net)
+        layout.addWidget(self.combobox_layer)
         layout.addWidget(self.label_thickness)
         layout.addWidget(self.line_edit_thickness)
         layout.addWidget(self.label_width)
@@ -164,6 +169,7 @@ class MainWindow(QMainWindow):
         self.canvas.mpl_connect("button_press_event", self.on_mouse_press)
         self.canvas.mpl_connect("motion_notify_event", self.on_motion_notify)
         self.canvas.mpl_connect("button_release_event", self.on_mouse_release)
+        self.canvas.mpl_connect('scroll_event', self.on_scroll)
 
         self.first_coordinate_line_y = 0
         self.horizontal_lines = []  # Список координат горизонтальных линий
@@ -179,6 +185,13 @@ class MainWindow(QMainWindow):
         self.y_grid_edit = 0
         self.current_x = 0
         self.current_y = 0
+
+        self.pressed = False
+        self.prev_x = None
+        self.prev_y = None
+        self.translation_factor = 0.005  # Коэффициент перемещения
+        self.current_x_lim = None
+        self.current_y_lim = None
 
     def auto_part(self):
         if self.info_layers:
@@ -275,7 +288,11 @@ class MainWindow(QMainWindow):
 
 
     def on_mouse_press(self, event):
-        if self.radio_edit.isChecked():
+        if event.button == MouseButton.MIDDLE:
+            self.pressed = True
+            self.prev_x = event.x
+            self.prev_y = event.y
+        if self.radio_edit.isChecked() and event.button == MouseButton.LEFT:
             x = round(event.xdata, 1)
             y = round(event.ydata, 1)
             for index, coordinate in enumerate(self.triangle_coordinates):
@@ -386,7 +403,32 @@ class MainWindow(QMainWindow):
                         msg.setIcon(QMessageBox.Warning)
                         msg.exec_()
 
+    def on_scroll(self, event):
+        if event.button == 'up':
+            # Увеличение масштаба при прокрутке вверх
+            self.current_x_lim = [self.axes.get_xlim()[0] * 0.9, self.axes.get_xlim()[1] * 0.9]
+            self.current_y_lim = [self.axes.get_ylim()[0] * 0.9, self.axes.get_ylim()[1] * 0.9]
+            self.axes.set_xlim(self.axes.get_xlim()[0] * 0.9, self.axes.get_xlim()[1] * 0.9)
+            self.axes.set_ylim(self.axes.get_ylim()[0] * 0.9, self.axes.get_ylim()[1] * 0.9)
+        elif event.button == 'down':
+            # Уменьшение масштаба при прокрутке вниз
+            self.current_x_lim = [self.axes.get_xlim()[0] * 1.1, self.axes.get_xlim()[1] * 1.1]
+            self.current_y_lim = [self.axes.get_ylim()[0] * 1.1, self.axes.get_ylim()[1] * 1.1]
+            self.axes.set_xlim(self.axes.get_xlim()[0] * 1.1, self.axes.get_xlim()[1] * 1.1)
+            self.axes.set_ylim(self.axes.get_ylim()[0] * 1.1, self.axes.get_ylim()[1] * 1.1)
+        self.canvas.draw()
+
     def on_motion_notify(self, event):
+        if self.pressed:
+            dx = (event.x - self.prev_x) * self.translation_factor
+            dy = (event.y - self.prev_y) * self.translation_factor
+            self.current_x_lim = [self.axes.get_xlim()[0] - dx, self.axes.get_xlim()[1] - dx]
+            self.current_y_lim = [self.axes.get_ylim()[0] + dy, self.axes.get_ylim()[1] + dy]
+            self.axes.set_xlim(self.axes.get_xlim()[0] - dx, self.axes.get_xlim()[1] - dx)
+            self.axes.set_ylim(self.axes.get_ylim()[0] + dy, self.axes.get_ylim()[1] + dy)
+            self.prev_x = event.x
+            self.prev_y = event.y
+            self.canvas.draw()
         if self.radio_edit.isChecked() and self.dragging == True:
 
             x = round(event.xdata, 1)
@@ -412,7 +454,8 @@ class MainWindow(QMainWindow):
                     triangle['x2'] = x
                     self.y_grid_edit = y
                     self.x_grid_edit = x
-
+            # self.axes.relim()  # Обновление пределов осей на основе новых данных
+            # self.axes.autoscale_view()  # Автоматическое масштабирование графика
             self.draw_rectangles()
 
             for triangle in self.triangle_coordinates:
@@ -423,7 +466,8 @@ class MainWindow(QMainWindow):
             self.canvas.draw()
 
     def on_mouse_release(self, event):
-
+        if event.button == MouseButton.MIDDLE:
+            self.pressed = False
         self.dragging = False
 
     def toggle_auto_save(self, state):
@@ -462,6 +506,9 @@ class MainWindow(QMainWindow):
 
     def add_rectangle(self):
         if self.net_enabled:
+
+            rect_name = self.combobox_layer.currentText()
+
             self.horizontal_lines = []
             self.vertical_lines = []
             if (self.line_edit_thickness.text()).isdigit():
@@ -484,6 +531,8 @@ class MainWindow(QMainWindow):
                 return
             if (self.line_edit_density.text()).isdigit():
                 density = float(self.line_edit_density.text())
+            # надо добавить чекбокс какой-нибудь, типо авто метрики, и добавить условие, что если авто, то density и тд подтягиваются из БД
+            # ну и прописать логику определения слоев, скорее всего будет поиск по названию слоя в БД
             else:
                 msg = QMessageBox()
                 msg.setWindowTitle("Ошибка")
@@ -493,19 +542,23 @@ class MainWindow(QMainWindow):
                 return
 
                 # Выбор цвета слоя
-            color_dialog = QColorDialog()
-            color = color_dialog.getColor()
-            if color.isValid():
-                rect_color = color.name()
-            else:
-                return
+            # color_dialog = QColorDialog()
+            # color = color_dialog.getColor()
+            # if color.isValid():
+            #     rect_color = color.name()
+            # else:
+            #     return
+
+            rect_color = 'pink' # тут должен быть цвет слоя из БД
 
             # Ввод названия слоя
-            name, ok = QInputDialog.getText(self, 'Введите название', 'Название:')
-            if ok:
-                rect_name = name
-            else:
-                return
+            # name, ok = QInputDialog.getText(self, 'Введите название', 'Название:')
+            # if ok:
+            #     rect_name = name
+            # else:
+            #     return
+
+
 
             if self.check_first != 0:
                 x = 0
@@ -593,13 +646,13 @@ class MainWindow(QMainWindow):
             else:
                 return
 
-
+            rect_name = self.combobox_layer.currentText()
             # Ввод названия слоя
-            name, ok = QInputDialog.getText(self, 'Введите название', 'Название:')
-            if ok:
-                rect_name = name
-            else:
-                return
+            # name, ok = QInputDialog.getText(self, 'Введите название', 'Название:')
+            # if ok:
+            #     rect_name = name
+            # else:
+            #     return
 
             if self.check_first != 0:
                 x = 0
@@ -648,18 +701,34 @@ class MainWindow(QMainWindow):
             self.vertical_lines = []
 
     def draw_rectangles(self):
-        if self.net_enabled:
+        if self.net_enabled and self.radio_edit.isChecked():
             self.axes.clear()
             for rect in self.rectangles:
                 self.axes.add_patch(rect)
                 self.axes.annotate(rect.get_label(),
                                    (rect.get_x() + rect.get_width() / 2, rect.get_y() + rect.get_height() / 2),
                                    ha='center', va='center')
+            x_min, x_max = self.current_x_lim
+            y_min, y_max = self.current_y_lim
+            self.axes.set_xlim([x_min, x_max])
+            self.axes.set_ylim(
+                [y_min, y_max])
+            # self.axes.autoscale(enable=False, axis='both')
+            self.canvas.draw()
+        if self.net_enabled and self.radio_edit.isChecked() == False:
+            self.axes.clear()
+            for rect in self.rectangles:
+                self.axes.add_patch(rect)
+                self.axes.annotate(rect.get_label(),
+                                   (rect.get_x() + rect.get_width() / 2, rect.get_y() + rect.get_height() / 2),
+                                   ha='center', va='center')
+            self.current_x_lim = [0, float(self.line_edit_part.text())]
+            self.current_y_lim = [0 - float(self.line_edit_thickness.text()) * 2, self.final_Y + float(self.line_edit_thickness.text())]
             self.axes.set_xlim([0, float(self.line_edit_part.text())])
             self.axes.set_ylim(
                 [0 - float(self.line_edit_thickness.text()) * 2, self.final_Y + float(self.line_edit_thickness.text())])
             self.canvas.draw()
-        else:
+        if not self.net_enabled:
             self.axes.clear()
             for rect in self.rectangles:
                 self.axes.add_patch(rect)
@@ -685,215 +754,229 @@ class MainWindow(QMainWindow):
             return
 
     def create_grid(self):
-        self.vertical_lines = sorted(self.vertical_lines, key=lambda line: line['x0'])
-        self.horizontal_lines = sorted(self.horizontal_lines, key=lambda line: line['y0'])
+        if self.vertical_lines and self.horizontal_lines:
+            self.vertical_lines = sorted(self.vertical_lines, key=lambda line: line['x0'])
+            self.horizontal_lines = sorted(self.horizontal_lines, key=lambda line: line['y0'])
 
-        vert_wall = []
-        horiz_wall = []
+            vert_wall = []
+            horiz_wall = []
 
-        first_w = 0
-        x_pred = 0
+            first_w = 0
+            x_pred = 0
 
-        for line_vertical in self.vertical_lines:
+            for line_vertical in self.vertical_lines:
 
-            x1_vert = line_vertical['x1']
+                x1_vert = line_vertical['x1']
 
-            if first_w == 0:
-                x1_cell = x1_vert
-                x_pred = x1_vert
+                if first_w == 0:
+                    x1_cell = x1_vert
+                    x_pred = x1_vert
+                    first_w += 1
+                    continue
+                if first_w > 0:
+                    vert_wall.append([x_pred, x1_vert])
+                    x_pred = x1_vert
+                    continue
                 first_w += 1
-                continue
-            if first_w > 0:
-                vert_wall.append([x_pred, x1_vert])
-                x_pred = x1_vert
-                continue
-            first_w += 1
 
-        first_w = 0
-        x_pred = 0
+            first_w = 0
+            x_pred = 0
 
-        for line_horizontal in self.horizontal_lines:
+            for line_horizontal in self.horizontal_lines:
 
-            y1_hor = line_horizontal['y1']
+                y1_hor = line_horizontal['y1']
 
-            if first_w == 0:
-                y_pred = y1_hor
+                if first_w == 0:
+                    y_pred = y1_hor
+                    first_w += 1
+                    continue
+                if first_w > 0:
+                    horiz_wall.append([y_pred, y1_hor])
+                    y_pred = y1_hor
+                    continue
                 first_w += 1
-                continue
-            if first_w > 0:
-                horiz_wall.append([y_pred, y1_hor])
-                y_pred = y1_hor
-                continue
-            first_w += 1
 
-        all_coordinates = []
-        for line_horizontal in horiz_wall:
-            for line_vertical in vert_wall:
-                all_coordinates.append([line_horizontal[0], line_vertical[0], line_horizontal[1], line_vertical[1]])
-        number_triangle = 0
-        for coordinates in all_coordinates:
-            number_triangle+=1
-            self.axes.plot([coordinates[1], coordinates[3]], [coordinates[0], coordinates[2]],
-                           color='red')
-            triangle_info = {
-                'number': number_triangle,
-                'x0': coordinates[1],
-                'x1': coordinates[3],
-                'x2': coordinates[1],
-                'y0': coordinates[0],
-                'y1': coordinates[2],
-                'y2': coordinates[2],
+            all_coordinates = []
+            for line_horizontal in horiz_wall:
+                for line_vertical in vert_wall:
+                    all_coordinates.append([line_horizontal[0], line_vertical[0], line_horizontal[1], line_vertical[1]])
+            number_triangle = 0
+            for coordinates in all_coordinates:
+                number_triangle+=1
+                # self.axes.plot([coordinates[1], coordinates[3]], [coordinates[0], coordinates[2]],
+                #                color='red')
+                triangle_info = {
+                    'number': number_triangle,
+                    'x0': coordinates[1],
+                    'x1': coordinates[3],
+                    'x2': coordinates[1],
+                    'y0': coordinates[0],
+                    'y1': coordinates[2],
+                    'y2': coordinates[2],
 
-            }
-            self.triangle_coordinates.append(triangle_info)
-            triangle_info = {
-                'number': number_triangle,
-                'x0': coordinates[1],
-                'x1': coordinates[3],
-                'x2': coordinates[3],
-                'y0': coordinates[0],
-                'y1': coordinates[2],
-                'y2': coordinates[0],
+                }
+                self.triangle_coordinates.append(triangle_info)
+                triangle_info = {
+                    'number': number_triangle,
+                    'x0': coordinates[1],
+                    'x1': coordinates[3],
+                    'x2': coordinates[3],
+                    'y0': coordinates[0],
+                    'y1': coordinates[2],
+                    'y2': coordinates[0],
 
-            }
-            self.triangle_coordinates.append(triangle_info)
+                }
+                self.triangle_coordinates.append(triangle_info)
 
-        self.canvas.draw()
-        self.draw_rectangles()
-        for index, triangle in enumerate(self.triangle_coordinates):
-            x0 = float(triangle['x0'])
-            x1 = float(triangle['x1'])
-            x2 = float(triangle['x2'])
-            y0 = float(triangle['y0'])
-            y1 = float(triangle['y1'])
-            y2 = float(triangle['y2'])
-            x = [x0, x1, x2]
-            y = [y0, y1, y2]
-            self.axes.plot(x + [x[0]], y + [y[0]], color='red')
-        self.canvas.draw()
+            # self.canvas.draw()
+            self.draw_rectangles()
+            for index, triangle in enumerate(self.triangle_coordinates):
+                x0 = float(triangle['x0'])
+                x1 = float(triangle['x1'])
+                x2 = float(triangle['x2'])
+                y0 = float(triangle['y0'])
+                y1 = float(triangle['y1'])
+                y2 = float(triangle['y2'])
+                x = [x0, x1, x2]
+                y = [y0, y1, y2]
+                self.axes.plot(x + [x[0]], y + [y[0]], color='red')
+            self.canvas.draw()
+        else:
+            msg = QMessageBox()
+            msg.setWindowTitle("Ошибка")
+            msg.setText("Возникли проблемы со линиями сетки!")
+            msg.setIcon(QMessageBox.Warning)
+            msg.exec_()
 
     def save_grid_information(self):
-        # self.vertical_lines = sorted(self.vertical_lines, key=lambda line: line['x0'])
-        # self.horizontal_lines = sorted(self.horizontal_lines, key=lambda line: line['y0'])
-        #
-        # vert_wall = []
-        # horiz_wall = []
-        #
-        #
-        #
-        # first_w = 0
-        # x_pred = 0
-        #
-        # for line_vertical in self.vertical_lines:
-        #
-        #     x1_vert = line_vertical['x1']
-        #
-        #     if first_w == 0:
-        #
-        #         x1_cell = x1_vert
-        #         x_pred = x1_vert
-        #         first_w += 1
-        #         continue
-        #     if first_w > 0:
-        #         vert_wall.append([x_pred, x1_vert])
-        #         x_pred = x1_vert
-        #         continue
-        #     first_w += 1
-        #
-        # first_w = 0
-        # x_pred = 0
-        #
-        # for line_horizontal in self.horizontal_lines:
-        #
-        #     y1_hor = line_horizontal['y1']
-        #
-        #     if first_w == 0:
-        #         y_pred = y1_hor
-        #         first_w += 1
-        #         continue
-        #     if first_w > 0:
-        #         horiz_wall.append([y_pred, y1_hor])
-        #         y_pred = y1_hor
-        #         continue
-        #     first_w += 1
-        #
-        # all_coordinates = []
-        # for line_horizontal in horiz_wall:
-        #     for line_vertical in vert_wall:
-        #         all_coordinates.append([line_horizontal[0],line_vertical[0],line_horizontal[1],line_vertical[1]])
+        if self.triangle_coordinates:
+            # self.vertical_lines = sorted(self.vertical_lines, key=lambda line: line['x0'])
+            # self.horizontal_lines = sorted(self.horizontal_lines, key=lambda line: line['y0'])
+            #
+            # vert_wall = []
+            # horiz_wall = []
+            #
+            #
+            #
+            # first_w = 0
+            # x_pred = 0
+            #
+            # for line_vertical in self.vertical_lines:
+            #
+            #     x1_vert = line_vertical['x1']
+            #
+            #     if first_w == 0:
+            #
+            #         x1_cell = x1_vert
+            #         x_pred = x1_vert
+            #         first_w += 1
+            #         continue
+            #     if first_w > 0:
+            #         vert_wall.append([x_pred, x1_vert])
+            #         x_pred = x1_vert
+            #         continue
+            #     first_w += 1
+            #
+            # first_w = 0
+            # x_pred = 0
+            #
+            # for line_horizontal in self.horizontal_lines:
+            #
+            #     y1_hor = line_horizontal['y1']
+            #
+            #     if first_w == 0:
+            #         y_pred = y1_hor
+            #         first_w += 1
+            #         continue
+            #     if first_w > 0:
+            #         horiz_wall.append([y_pred, y1_hor])
+            #         y_pred = y1_hor
+            #         continue
+            #     first_w += 1
+            #
+            # all_coordinates = []
+            # for line_horizontal in horiz_wall:
+            #     for line_vertical in vert_wall:
+            #         all_coordinates.append([line_horizontal[0],line_vertical[0],line_horizontal[1],line_vertical[1]])
 
-        cells = []
+            cells = []
 
-        #сохранение клеток
-        # for layer in self.info_layers:
-        #     x0_layer = layer['x0']
-        #     x1_layer = layer['x1']
-        #     y0_layer = layer['y0']
-        #     y1_layer = layer['y1']
-        #     for coordinates in all_coordinates:
-        #         if coordinates[1] >= x0_layer and coordinates[0] >= y0_layer and coordinates[3] <= x1_layer and coordinates[2] <= y1_layer:
-        #             cell_info = {
-        #                 'name': layer['name'],
-        #                 'color': layer['color'],
-        #                 'x0': coordinates[1],
-        #                 'x1': coordinates[3],
-        #                 'y0': coordinates[0],
-        #                 'y1': coordinates[2]
-        #
-        #             }
-        #             cells.append(cell_info)
+            #сохранение клеток
+            # for layer in self.info_layers:
+            #     x0_layer = layer['x0']
+            #     x1_layer = layer['x1']
+            #     y0_layer = layer['y0']
+            #     y1_layer = layer['y1']
+            #     for coordinates in all_coordinates:
+            #         if coordinates[1] >= x0_layer and coordinates[0] >= y0_layer and coordinates[3] <= x1_layer and coordinates[2] <= y1_layer:
+            #             cell_info = {
+            #                 'name': layer['name'],
+            #                 'color': layer['color'],
+            #                 'x0': coordinates[1],
+            #                 'x1': coordinates[3],
+            #                 'y0': coordinates[0],
+            #                 'y1': coordinates[2]
+            #
+            #             }
+            #             cells.append(cell_info)
 
-        for layer in self.info_layers:
-            x0_layer = layer['x0']
-            x1_layer = layer['x1']
-            y0_layer = layer['y0']
-            y1_layer = layer['y1']
-            for index, coordinates in enumerate(self.triangle_coordinates):
-                if coordinates['x0'] >= x0_layer and coordinates['y0'] >= y0_layer and coordinates['x1'] <= x1_layer and coordinates['y1'] <= y1_layer \
-                    and coordinates['x2'] >= x0_layer and coordinates['x2'] <= x1_layer and coordinates['y2'] >= y0_layer and coordinates['y2'] <= y1_layer:
-                    cell_info = {
-                        'name': layer['name'],
-                        'color': layer['color'],
-                        'x0': coordinates['x0'],
-                        'x1': coordinates['x1'],
-                        'x2': coordinates['x2'],
-                        'y0': coordinates['y0'],
-                        'y1': coordinates['y1'],
-                        'y2': coordinates['y2']
+            for layer in self.info_layers:
+                x0_layer = layer['x0']
+                x1_layer = layer['x1']
+                y0_layer = layer['y0']
+                y1_layer = layer['y1']
+                for index, coordinates in enumerate(self.triangle_coordinates):
+                    if coordinates['x0'] >= x0_layer and coordinates['y0'] >= y0_layer and coordinates['x1'] <= x1_layer and coordinates['y1'] <= y1_layer \
+                        and coordinates['x2'] >= x0_layer and coordinates['x2'] <= x1_layer and coordinates['y2'] >= y0_layer and coordinates['y2'] <= y1_layer:
+                        cell_info = {
+                            'name': layer['name'],
+                            'color': layer['color'],
+                            'x0': coordinates['x0'],
+                            'x1': coordinates['x1'],
+                            'x2': coordinates['x2'],
+                            'y0': coordinates['y0'],
+                            'y1': coordinates['y1'],
+                            'y2': coordinates['y2']
 
-                    }
-                    cells.append(cell_info)
+                        }
+                        cells.append(cell_info)
 
-        workbook = openpyxl.Workbook()
-        sheet = workbook.active
+            workbook = openpyxl.Workbook()
+            sheet = workbook.active
 
-        headers = ['Name', 'Color', 'x0', 'x1', 'x2', 'y0', 'y1', 'y2']
+            headers = ['Name', 'Color', 'x0', 'x1', 'x2', 'y0', 'y1', 'y2']
 
-        for col, header in enumerate(headers, start=1):
-            sheet.cell(row=1, column=col).value = header
+            for col, header in enumerate(headers, start=1):
+                sheet.cell(row=1, column=col).value = header
 
-        for index, cell_info in enumerate(cells, start=2):
-            sheet.cell(row=index, column=1).value = cell_info['name']
-            sheet.cell(row=index, column=2).value = cell_info['color']
-            sheet.cell(row=index, column=3).value = cell_info['x0']
-            sheet.cell(row=index, column=4).value = cell_info['x1']
-            sheet.cell(row=index, column=5).value = cell_info['x2']
-            sheet.cell(row=index, column=6).value = cell_info['y0']
-            sheet.cell(row=index, column=7).value = cell_info['y1']
-            sheet.cell(row=index, column=8).value = cell_info['y2']
+            for index, cell_info in enumerate(cells, start=2):
+                sheet.cell(row=index, column=1).value = cell_info['name']
+                sheet.cell(row=index, column=2).value = cell_info['color']
+                sheet.cell(row=index, column=3).value = cell_info['x0']
+                sheet.cell(row=index, column=4).value = cell_info['x1']
+                sheet.cell(row=index, column=5).value = cell_info['x2']
+                sheet.cell(row=index, column=6).value = cell_info['y0']
+                sheet.cell(row=index, column=7).value = cell_info['y1']
+                sheet.cell(row=index, column=8).value = cell_info['y2']
 
-        root = Tk()
-        root.withdraw()
-        file_path = filedialog.asksaveasfilename(defaultextension='.xlsx')
+            root = Tk()
+            root.withdraw()
+            file_path = filedialog.asksaveasfilename(defaultextension='.xlsx')
 
-        if file_path:
-            
-            workbook.save(file_path)
-            print("Excel file saved successfully.")
+            if file_path:
+
+                workbook.save(file_path)
+                print("Excel file saved successfully.")
+            else:
+                print("Save operation canceled.")
+
+            root.destroy()
         else:
-            print("Save operation canceled.")
-
-        root.destroy()
+            msg = QMessageBox()
+            msg.setWindowTitle("Ошибка")
+            msg.setText("кажется нечего сохранять!")
+            msg.setIcon(QMessageBox.Warning)
+            msg.exec_()
 
     def save_current_partition(self):
         if (self.line_edit_part.text()).isdigit():
