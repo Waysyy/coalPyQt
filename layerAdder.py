@@ -1,6 +1,7 @@
 import sys
 from tkinter import Tk, filedialog
 
+import numpy as np
 import pandas as pd
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget, \
@@ -69,6 +70,10 @@ class MainWindow(QMainWindow):
         self.button_undo.setGeometry(10, 290, 210, 30)
         self.button_undo.clicked.connect(self.undo_action)
 
+        self.button_edit_grid = QPushButton("Подготовка к редактированию", self)
+        self.button_edit_grid.setGeometry(10, 210, 210, 30)
+        self.button_edit_grid.clicked.connect(self.create_grid)
+
         self.button_save = QPushButton("Сохранить разбиения", self)
         self.button_save.setGeometry(10, 330, 210, 30)
         self.button_save.clicked.connect(self.save_partitions)
@@ -89,6 +94,11 @@ class MainWindow(QMainWindow):
         self.radio_horizontal.setGeometry(10, 410, 150, 40)
         self.radio_horizontal.toggled.connect(self.toggle_horizontal_line)
         self.radio_horizontal.setVisible(False)
+
+        self.radio_edit = QRadioButton("Режим редактирования сетки", self)
+        self.radio_edit.setGeometry(10, 410, 150, 40)
+        self.radio_edit.toggled.connect(self.toggle_edit)
+        self.radio_edit.setVisible(True)
 
         # объект для графика Matplotlib
         self.figure = Figure()
@@ -115,10 +125,12 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.checkbox_auto)
         layout.addWidget(self.radio_vertical)
         layout.addWidget(self.radio_horizontal)
+        layout.addWidget(self.radio_edit)
         layout.addWidget(self.button_add)
         layout.addWidget(self.button_next)
         layout.addWidget(self.button_auto_part)
         layout.addWidget(self.button_undo)
+        layout.addWidget(self.button_edit_grid)
         layout.addWidget(self.button_save)
         layout.addWidget(self.button_save_1)
         layout.addWidget(self.canvas)
@@ -149,7 +161,7 @@ class MainWindow(QMainWindow):
 
         # Добавление обработчиков событий мыши на FigureCanvas
         self.canvas.mpl_connect("button_press_event", self.on_mouse_press)
-        self.canvas.mpl_connect("motion_notify_event", self.on_mouse_move)
+        self.canvas.mpl_connect("motion_notify_event", self.on_motion_notify)
         self.canvas.mpl_connect("button_release_event", self.on_mouse_release)
 
         self.first_coordinate_line_y = 0
@@ -160,6 +172,12 @@ class MainWindow(QMainWindow):
 
         self.first_line_horizontal_check = True
         self.first_line_vertical_check = True
+        self.triangle_coordinates = []
+        self.dragging = False
+        self.x_grid_edit = 0
+        self.y_grid_edit = 0
+        self.current_x = 0
+        self.current_y = 0
 
     def auto_part(self):
         if self.info_layers:
@@ -256,114 +274,156 @@ class MainWindow(QMainWindow):
 
 
     def on_mouse_press(self, event):
-        if self.info_layers:
-            # Обработка нажатия кнопки мыши
-            if event.button == 1:  # Левая кнопка мыши
-                x = event.xdata
-                y = event.ydata
-                if x is not None and y is not None:
-                    if (self.line_edit_part.text()).isdigit():
-                        height = int(self.line_edit_part.text())
-                    else:
-                        msg = QMessageBox()
-                        msg.setWindowTitle("Ошибка")
-                        msg.setText("Для начала постройте слои!")
-                        msg.setIcon(QMessageBox.Warning)
-                        msg.exec_()
-                        return
-                    height_sum = sum(partition['thickness'] for partition in self.current_partitions)
-                    ylim = height_sum
-                    if self.radio_horizontal.isChecked():
-                        if self.first_line_horizontal_check == True:
-                            line_info = {
-                                'x0': 0,
-                                'x1': height,
-                                'y0': self.first_coordinate_line_y + ylim,
-                                'y1': self.first_coordinate_line_y + ylim
-                            }
-                            self.horizontal_lines.append(line_info)
-                            # Рисование линии по всей ширине графика
-                            self.axes.plot([0, height], [self.first_coordinate_line_y+ylim, self.first_coordinate_line_y+ylim], color='red')
-                            for layer in self.info_layers:
+        if self.radio_edit.isChecked():
+            x = round(event.xdata, 1)
+            y = round(event.ydata, 1)
+            for index, coordinate in enumerate(self.triangle_coordinates):
+                x0 = round(coordinate['x0'], 1)
+                x1 = round(coordinate['x1'], 1)
+                x2 = round(coordinate['x2'], 1)
+                y0 = round(coordinate['y0'], 1)
+                y1 = round(coordinate['y1'], 1)
+                y2 = round(coordinate['y2'], 1)
+                if (x == x0 or x == x1 or x == x2) and (y == y0 or y == y1 or y == y2):
+                    self.dragging = True
+                    self.x_grid_edit = x
+                    self.y_grid_edit = y
+
+        else:
+            if self.info_layers:
+                # Обработка нажатия кнопки мыши
+                if event.button == 1:  # Левая кнопка мыши
+                    x = event.xdata
+                    y = event.ydata
+                    if x is not None and y is not None:
+                        if (self.line_edit_part.text()).isdigit():
+                            height = int(self.line_edit_part.text())
+                        else:
+                            msg = QMessageBox()
+                            msg.setWindowTitle("Ошибка")
+                            msg.setText("Для начала постройте слои!")
+                            msg.setIcon(QMessageBox.Warning)
+                            msg.exec_()
+                            return
+                        height_sum = sum(partition['thickness'] for partition in self.current_partitions)
+                        ylim = height_sum
+                        if self.radio_horizontal.isChecked():
+                            if self.first_line_horizontal_check == True:
                                 line_info = {
                                     'x0': 0,
                                     'x1': height,
-                                    'y0': layer['y0'],
-                                    'y1': layer['y0']
+                                    'y0': self.first_coordinate_line_y + ylim,
+                                    'y1': self.first_coordinate_line_y + ylim
                                 }
                                 self.horizontal_lines.append(line_info)
                                 # Рисование линии по всей ширине графика
-                                self.axes.plot([0, height], [layer['y0'], layer['y0']], color='red')
-                            self.first_line_horizontal_check = False
+                                self.axes.plot([0, height], [self.first_coordinate_line_y+ylim, self.first_coordinate_line_y+ylim], color='red')
+                                for layer in self.info_layers:
+                                    line_info = {
+                                        'x0': 0,
+                                        'x1': height,
+                                        'y0': layer['y0'],
+                                        'y1': layer['y0']
+                                    }
+                                    self.horizontal_lines.append(line_info)
+                                    # Рисование линии по всей ширине графика
+                                    self.axes.plot([0, height], [layer['y0'], layer['y0']], color='red')
+                                self.first_line_horizontal_check = False
 
-                        line_info = {
-                            'x0': 0,
-                            'x1': height,
-                            'y0': y,
-                            'y1': y
-                        }
-                        self.horizontal_lines.append(line_info)
-                        # Рисование линии по всей ширине графика
-                        self.axes.plot([0,height], [y, y], color='red')
-                        self.canvas.draw()
-
-
-                    if self.radio_vertical.isChecked():
-                        if self.first_line_vertical_check == True:
                             line_info = {
                                 'x0': 0,
-                                'x1': 0,
-                                'y0': self.first_coordinate_line_y,
-                                'y1': self.first_coordinate_line_y+ylim
-                            }
-                            self.vertical_lines.append(line_info)
-                            # Рисование линии по всей ширине графика
-                            self.axes.plot([0, 0], [self.first_coordinate_line_y, self.first_coordinate_line_y+ylim], color='blue')
-                            line_info = {
-                                'x0': height,
                                 'x1': height,
+                                'y0': y,
+                                'y1': y
+                            }
+                            self.horizontal_lines.append(line_info)
+                            # Рисование линии по всей ширине графика
+                            self.axes.plot([0,height], [y, y], color='red')
+                            self.canvas.draw()
+
+
+                        if self.radio_vertical.isChecked():
+                            if self.first_line_vertical_check == True:
+                                line_info = {
+                                    'x0': 0,
+                                    'x1': 0,
+                                    'y0': self.first_coordinate_line_y,
+                                    'y1': self.first_coordinate_line_y+ylim
+                                }
+                                self.vertical_lines.append(line_info)
+                                # Рисование линии по всей ширине графика
+                                self.axes.plot([0, 0], [self.first_coordinate_line_y, self.first_coordinate_line_y+ylim], color='blue')
+                                line_info = {
+                                    'x0': height,
+                                    'x1': height,
+                                    'y0': self.first_coordinate_line_y,
+                                    'y1': self.first_coordinate_line_y+ylim
+                                }
+                                self.vertical_lines.append(line_info)
+                                # Рисование линии по всей ширине графика
+                                self.axes.plot([height, height], [self.first_coordinate_line_y, self.first_coordinate_line_y+ylim], color='blue')
+                                self.first_line_vertical_check = False
+
+                            line_info = {
+                                'x0': x,
+                                'x1': x,
                                 'y0': self.first_coordinate_line_y,
                                 'y1': self.first_coordinate_line_y+ylim
                             }
                             self.vertical_lines.append(line_info)
                             # Рисование линии по всей ширине графика
-                            self.axes.plot([height, height], [self.first_coordinate_line_y, self.first_coordinate_line_y+ylim], color='blue')
-                            self.first_line_vertical_check = False
-
-                        line_info = {
-                            'x0': x,
-                            'x1': x,
-                            'y0': self.first_coordinate_line_y,
-                            'y1': self.first_coordinate_line_y+ylim
-                        }
-                        self.vertical_lines.append(line_info)
-                        # Рисование линии по всей ширине графика
-                        self.axes.plot([x, x], [self.first_coordinate_line_y, self.first_coordinate_line_y+ylim], color='blue')
+                            self.axes.plot([x, x], [self.first_coordinate_line_y, self.first_coordinate_line_y+ylim], color='blue')
 
 
 
-                        self.canvas.draw()
-                    pass
-                else:
-                    msg = QMessageBox()
-                    msg.setWindowTitle("Ошибка")
-                    msg.setText("Возникли проблемы со слоями!")
-                    msg.setIcon(QMessageBox.Warning)
-                    msg.exec_()
-                    
+                            self.canvas.draw()
+                        pass
+                    else:
+                        msg = QMessageBox()
+                        msg.setWindowTitle("Ошибка")
+                        msg.setText("Возникли проблемы со слоями!")
+                        msg.setIcon(QMessageBox.Warning)
+                        msg.exec_()
 
-    def on_mouse_move(self, event):
-        # Обработка движения мыши
-        if event.button == 1 and event.xdata is not None and event.ydata is not None:
-            # Обновление графика при движении мыши
-            # Например, обновление позиции линии
-            pass
+    def on_motion_notify(self, event):
+        if self.radio_edit.isChecked() and self.dragging == True:
+
+            x = round(event.xdata, 1)
+            y = round(event.ydata, 1)
+            x_grid_edit = self.x_grid_edit
+            y_grid_edit = self.y_grid_edit
+
+            for triangle in self.triangle_coordinates:
+                if triangle['y0'] == y_grid_edit and triangle['x0'] == x_grid_edit:
+                    triangle['y0'] = y
+                    triangle['x0'] = x
+                    self.y_grid_edit = y
+                    self.x_grid_edit = x
+
+                if triangle['y1'] == y_grid_edit and triangle['x1'] == x_grid_edit:
+                    triangle['y1'] = y
+                    triangle['x1'] = x
+                    self.y_grid_edit = y
+                    self.x_grid_edit = x
+
+                if triangle['y2'] == y_grid_edit and triangle['x2'] == x_grid_edit:
+                    triangle['y2'] = y
+                    triangle['x2'] = x
+                    self.y_grid_edit = y
+                    self.x_grid_edit = x
+
+            self.draw_rectangles()
+
+            for triangle in self.triangle_coordinates:
+                x = [triangle['x0'], triangle['x1'], triangle['x2']]
+                y = [triangle['y0'], triangle['y1'], triangle['y2']]
+                self.axes.plot(x + [x[0]], y + [y[0]], color='red')
+
+            self.canvas.draw()
 
     def on_mouse_release(self, event):
-        # Обработка отпускания кнопки мыши
-        if event.button == 1:
-            # Завершение операции после отпускания кнопки мыши
-            pass
+
+        self.dragging = False
 
     def toggle_auto_save(self, state):
         self.auto_save_enabled = state == Qt.Checked
@@ -373,6 +433,9 @@ class MainWindow(QMainWindow):
         return
 
     def toggle_horizontal_line(self, checked):
+        return
+
+    def toggle_edit(self, checked):
         return
 
     def toggle_net(self, state):
@@ -618,6 +681,94 @@ class MainWindow(QMainWindow):
             msg.exec_()
             return
 
+    def create_grid(self):
+        self.vertical_lines = sorted(self.vertical_lines, key=lambda line: line['x0'])
+        self.horizontal_lines = sorted(self.horizontal_lines, key=lambda line: line['y0'])
+
+        vert_wall = []
+        horiz_wall = []
+
+        first_w = 0
+        x_pred = 0
+
+        for line_vertical in self.vertical_lines:
+
+            x1_vert = line_vertical['x1']
+
+            if first_w == 0:
+                x1_cell = x1_vert
+                x_pred = x1_vert
+                first_w += 1
+                continue
+            if first_w > 0:
+                vert_wall.append([x_pred, x1_vert])
+                x_pred = x1_vert
+                continue
+            first_w += 1
+
+        first_w = 0
+        x_pred = 0
+
+        for line_horizontal in self.horizontal_lines:
+
+            y1_hor = line_horizontal['y1']
+
+            if first_w == 0:
+                y_pred = y1_hor
+                first_w += 1
+                continue
+            if first_w > 0:
+                horiz_wall.append([y_pred, y1_hor])
+                y_pred = y1_hor
+                continue
+            first_w += 1
+
+        all_coordinates = []
+        for line_horizontal in horiz_wall:
+            for line_vertical in vert_wall:
+                all_coordinates.append([line_horizontal[0], line_vertical[0], line_horizontal[1], line_vertical[1]])
+        number_triangle = 0
+        for coordinates in all_coordinates:
+            number_triangle+=1
+            self.axes.plot([coordinates[1], coordinates[3]], [coordinates[0], coordinates[2]],
+                           color='red')
+            triangle_info = {
+                'number': number_triangle,
+                'x0': coordinates[1],
+                'x1': coordinates[3],
+                'x2': coordinates[1],
+                'y0': coordinates[0],
+                'y1': coordinates[2],
+                'y2': coordinates[2],
+
+            }
+            self.triangle_coordinates.append(triangle_info)
+            triangle_info = {
+                'number': number_triangle,
+                'x0': coordinates[1],
+                'x1': coordinates[3],
+                'x2': coordinates[3],
+                'y0': coordinates[0],
+                'y1': coordinates[2],
+                'y2': coordinates[0],
+
+            }
+            self.triangle_coordinates.append(triangle_info)
+
+        self.canvas.draw()
+        self.draw_rectangles()
+        for index, triangle in enumerate(self.triangle_coordinates):
+            x0 = float(triangle['x0'])
+            x1 = float(triangle['x1'])
+            x2 = float(triangle['x2'])
+            y0 = float(triangle['y0'])
+            y1 = float(triangle['y1'])
+            y2 = float(triangle['y2'])
+            x = [x0, x1, x2]
+            y = [y0, y1, y2]
+            self.axes.plot(x + [x[0]], y + [y[0]], color='red')
+        self.canvas.draw()
+
     def save_grid_information(self):
         self.vertical_lines = sorted(self.vertical_lines, key=lambda line: line['x0'])
         self.horizontal_lines = sorted(self.horizontal_lines, key=lambda line: line['y0'])
@@ -687,18 +838,14 @@ class MainWindow(QMainWindow):
                     }
                     cells.append(cell_info)
 
-        # Create a new workbook and select the active sheet
         workbook = openpyxl.Workbook()
         sheet = workbook.active
 
-        # Define headers for the table
         headers = ['Name', 'Color', 'x0', 'x1', 'y0', 'y1']
 
-        # Write headers to the first row of the sheet
         for col, header in enumerate(headers, start=1):
             sheet.cell(row=1, column=col).value = header
 
-        # Iterate through the cells list and write the data to Excel cells
         for index, cell_info in enumerate(cells, start=2):
             sheet.cell(row=index, column=1).value = cell_info['name']
             sheet.cell(row=index, column=2).value = cell_info['color']
@@ -707,13 +854,12 @@ class MainWindow(QMainWindow):
             sheet.cell(row=index, column=5).value = cell_info['y0']
             sheet.cell(row=index, column=6).value = cell_info['y1']
 
-        # Open a dialog box to choose the save location and filename
         root = Tk()
         root.withdraw()
         file_path = filedialog.asksaveasfilename(defaultextension='.xlsx')
 
         if file_path:
-            # Save the workbook
+            
             workbook.save(file_path)
             print("Excel file saved successfully.")
         else:
