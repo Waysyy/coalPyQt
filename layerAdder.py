@@ -1,18 +1,33 @@
 import sys
 from tkinter import Tk, filedialog
 
+import pymongo
 import numpy as np
 import pandas as pd
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget, \
-    QColorDialog, QInputDialog, QCheckBox, QFileDialog, QMessageBox, QRadioButton, QComboBox
+    QColorDialog, QInputDialog, QCheckBox, QFileDialog, QMessageBox, QRadioButton, QComboBox, QHBoxLayout
 from PyQt5.QtCore import Qt
 from matplotlib.backend_bases import MouseButton
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import matplotlib.patches as patches
 import openpyxl
+from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
+from webcolors import rgb_to_name
 
+uri = "mongodb+srv://vovabalaxoncev:Thcvovan7777@cluster0.u499jdc.mongodb.net/?retryWrites=true&w=majority"
+# Create a new client and connect to the server
+client = MongoClient(uri, server_api=ServerApi('1'))
+# Send a ping to confirm a successful connection
+db = client['BazaProv']
+colletion = db['Plotnosti']
+docs = colletion.distinct('Породы')
+plot = colletion.distinct('Плотность')
+print(docs)
+print(plot)
+ 
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -24,28 +39,37 @@ class MainWindow(QMainWindow):
         self.checkbox_net.setGeometry(10, 0, 150, 40)
         self.checkbox_net.stateChanged.connect(self.toggle_net)
 
+        # Создание компоновщиков
+        main_layout = QVBoxLayout()
+        top_panel_layout = QHBoxLayout()
 
         # виджеты интерфейса
         self.label_thickness = QLabel("Толщина:", self)
         self.label_thickness.setGeometry(10, 11, 100, 30)
         self.line_edit_thickness = QLineEdit(self)
-        self.line_edit_thickness.setGeometry(120, 10, 100, 30)
+        self.line_edit_thickness.setGeometry(30, 10, 30, 30)
 
         self.label_width = QLabel("Ширина разбиений:", self)
         self.label_width.setGeometry(10, 50, 100, 30)
         self.line_edit_width = QLineEdit(self)
-        self.line_edit_width.setGeometry(120, 50, 100, 30)
+        self.line_edit_width.setGeometry(120, 50, 30, 30)
         self.line_edit_width.setVisible(True)
-
+        
         self.label_density = QLabel("Плотность:", self)
         self.label_density.setGeometry(10, 130, 100, 30)
-        self.line_edit_density = QLineEdit(self)
-        self.line_edit_density.setGeometry(120, 130, 100, 30)
+        # self.line_edit_density = QComboBox()
+        # self.line_edit_density.addItems(plot)
+        # self.line_edit_density.setGeometry(120, 130, 100, 30)
+
+        #self.label_density = QLabel("Плотность:", self)
+        #self.label_density.setGeometry(10, 10, 10, 10)
+        #self.combobox_lam = QComboBox()
+        #self.combobox_lam.addItems(plot)
 
         self.label_part = QLabel("Длина участка в метрах:", self)
         self.label_part.setGeometry(10, 90, 150, 30)
         self.line_edit_part = QLineEdit(self)
-        self.line_edit_part.setGeometry(160, 90, 100, 30)
+        self.line_edit_part.setGeometry(30, 90, 30, 30)
 
 
         self.checkbox_auto = QCheckBox("Авто", self)
@@ -103,7 +127,7 @@ class MainWindow(QMainWindow):
         self.radio_edit.setVisible(False)
 
         self.combobox_layer = QComboBox()
-        self.combobox_layer.addItems(["Почва", "Гранит", "Песчаник", "Глина", "Кварцит", "Уголь"]) # по хорошему все названия подтянуть из БД
+        self.combobox_layer.addItems(docs) # по хорошему все названия подтянуть из БД
 
         # объект для графика Matplotlib
         self.figure = Figure()
@@ -118,27 +142,29 @@ class MainWindow(QMainWindow):
 
         # вертикальый компоновщик и добавление виджетов
         layout = QVBoxLayout()
-        layout.addWidget(self.checkbox_net)
-        layout.addWidget(self.combobox_layer)
-        layout.addWidget(self.label_thickness)
-        layout.addWidget(self.line_edit_thickness)
-        layout.addWidget(self.label_width)
-        layout.addWidget(self.line_edit_width)
-        layout.addWidget(self.label_part)
-        layout.addWidget(self.line_edit_part)
-        layout.addWidget(self.label_density)
-        layout.addWidget(self.line_edit_density)
-        layout.addWidget(self.checkbox_auto)
-        layout.addWidget(self.radio_vertical)
-        layout.addWidget(self.radio_horizontal)
-        layout.addWidget(self.radio_edit)
-        layout.addWidget(self.button_add)
-        layout.addWidget(self.button_next)
-        layout.addWidget(self.button_auto_part)
-        layout.addWidget(self.button_undo)
-        layout.addWidget(self.button_edit_grid)
-        layout.addWidget(self.button_save)
-        layout.addWidget(self.button_save_1)
+
+        top_panel_layout.addWidget(self.checkbox_net)
+        top_panel_layout.addWidget(self.combobox_layer)
+        top_panel_layout.addWidget(self.label_thickness)
+        top_panel_layout.addWidget(self.line_edit_thickness)
+        top_panel_layout.addWidget(self.label_width)
+        top_panel_layout.addWidget(self.line_edit_width)
+        top_panel_layout.addWidget(self.label_part)
+        top_panel_layout.addWidget(self.line_edit_part)
+        top_panel_layout.addWidget(self.label_density)
+        # layout.addWidget(self.line_edit_density)
+        top_panel_layout.addWidget(self.checkbox_auto)
+        top_panel_layout.addWidget(self.radio_vertical)
+        top_panel_layout.addWidget(self.radio_horizontal)
+        top_panel_layout.addWidget(self.radio_edit)
+        top_panel_layout.addWidget(self.button_add)
+        top_panel_layout.addWidget(self.button_next)
+        top_panel_layout.addWidget(self.button_auto_part)
+        top_panel_layout.addWidget(self.button_undo)
+        top_panel_layout.addWidget(self.button_edit_grid)
+        top_panel_layout.addWidget(self.button_save)
+        top_panel_layout.addWidget(self.button_save_1)
+        layout.addLayout(top_panel_layout)
         layout.addWidget(self.canvas)
 
         # виджет для размещения компоновки
@@ -431,29 +457,36 @@ class MainWindow(QMainWindow):
             self.canvas.draw()
         if self.radio_edit.isChecked() and self.dragging == True:
 
-            x = round(event.xdata, 1)
-            y = round(event.ydata, 1)
+            x = event.xdata
+            y = event.ydata
             x_grid_edit = self.x_grid_edit
             y_grid_edit = self.y_grid_edit
 
             for triangle in self.triangle_coordinates:
-                if triangle['y0'] == y_grid_edit and triangle['x0'] == x_grid_edit:
+                x0 = round(triangle['x0'], 1)
+                x1 = round(triangle['x1'], 1)
+                x2 = round(triangle['x2'], 1)
+                y0 = round(triangle['y0'], 1)
+                y1 = round(triangle['y1'], 1)
+                y2 = round(triangle['y2'], 1)
+                if y0 ==  round(y_grid_edit,1) and x0 ==  round(x_grid_edit,1):
                     triangle['y0'] = y
                     triangle['x0'] = x
                     self.y_grid_edit = y
                     self.x_grid_edit = x
 
-                if triangle['y1'] == y_grid_edit and triangle['x1'] == x_grid_edit:
+                if y1 == round(y_grid_edit,1) and x1 == round(x_grid_edit,1):
                     triangle['y1'] = y
                     triangle['x1'] = x
                     self.y_grid_edit = y
                     self.x_grid_edit = x
 
-                if triangle['y2'] == y_grid_edit and triangle['x2'] == x_grid_edit:
+                if y2 == round(y_grid_edit,1) and x2 == round(x_grid_edit,1):
                     triangle['y2'] = y
                     triangle['x2'] = x
                     self.y_grid_edit = y
                     self.x_grid_edit = x
+                # if x > self.axes.get_xlim[0]:
             # self.axes.relim()  # Обновление пределов осей на основе новых данных
             # self.axes.autoscale_view()  # Автоматическое масштабирование графика
             self.draw_rectangles()
@@ -505,18 +538,22 @@ class MainWindow(QMainWindow):
 
 
     def add_rectangle(self):
+        self.line_edit_part.setReadOnly(True)
         if self.net_enabled:
 
             rect_name = self.combobox_layer.currentText()
 
             self.horizontal_lines = []
             self.vertical_lines = []
+            self.triangle_coordinates = []
+            self.first_line_horizontal_check = True
+            self.first_line_vertical_check = True
             if (self.line_edit_thickness.text()).isdigit():
                 height = float(self.line_edit_thickness.text())
             else:
                 msg = QMessageBox()
                 msg.setWindowTitle("Ошибка")
-                msg.setText("Некорректное значение")
+                msg.setText("1 Некорректное значение")
                 msg.setIcon(QMessageBox.Warning)
                 msg.exec_()
                 return
@@ -525,21 +562,20 @@ class MainWindow(QMainWindow):
             else:
                 msg = QMessageBox()
                 msg.setWindowTitle("Ошибка")
-                msg.setText("Некорректное значение")
+                msg.setText("2 Некорректное значение")
                 msg.setIcon(QMessageBox.Warning)
                 msg.exec_()
                 return
-            if (self.line_edit_density.text()).isdigit():
-                density = float(self.line_edit_density.text())
+            rr = self.combobox_layer.currentText()
+            result = colletion.find({'Породы': str(self.combobox_layer.currentText())})
+            rect_color = None
+            density = None
+            for doc in result:
+                density = doc['Плотность']
+                rect_color = doc['Цвет']
+            self.label_density.setText(f'Плотность: {density}')
             # надо добавить чекбокс какой-нибудь, типо авто метрики, и добавить условие, что если авто, то density и тд подтягиваются из БД
             # ну и прописать логику определения слоев, скорее всего будет поиск по названию слоя в БД
-            else:
-                msg = QMessageBox()
-                msg.setWindowTitle("Ошибка")
-                msg.setText("Некорректное значение")
-                msg.setIcon(QMessageBox.Warning)
-                msg.exec_()
-                return
 
                 # Выбор цвета слоя
             # color_dialog = QColorDialog()
@@ -549,7 +585,8 @@ class MainWindow(QMainWindow):
             # else:
             #     return
 
-            rect_color = 'pink' # тут должен быть цвет слоя из БД
+
+            #rect_color = 'pink' # тут должен быть цвет слоя из БД
 
             # Ввод названия слоя
             # name, ok = QInputDialog.getText(self, 'Введите название', 'Название:')
@@ -628,23 +665,32 @@ class MainWindow(QMainWindow):
                 msg.setIcon(QMessageBox.Warning)
                 msg.exec_()
                 return
-            if (self.line_edit_density.text()).isdigit():
-                density = float(self.line_edit_density.text())
-            else:
-                msg = QMessageBox()
-                msg.setWindowTitle("Ошибка")
-                msg.setText("Некорректное значение")
-                msg.setIcon(QMessageBox.Warning)
-                msg.exec_()
-                return
+            #if (self.line_edit_density.text()).isdigit():
+            #    density = float(self.line_edit_density.text())
+            #else:
+            #    msg = QMessageBox()
+            #    msg.setWindowTitle("Ошибка")
+            #    msg.setText("Некорректное значение")
+            #    msg.setIcon(QMessageBox.Warning)
+            #    msg.exec_()
+            #    return
 
-                # Выбор цвета слоя
+            # Выбор цвета слоя
+            #color_dialog = QColorDialog()
+            #color = color_dialog.getColor()
+            #if color.isValid():
+            #    rect_color = color.name()
+            #else:
+            #    return
+            
             color_dialog = QColorDialog()
             color = color_dialog.getColor()
             if color.isValid():
                 rect_color = color.name()
             else:
                 return
+            
+            #rect_name = self.combobox_layer.currentText('#a9b497')
 
             rect_name = self.combobox_layer.currentText()
             # Ввод названия слоя
@@ -699,6 +745,9 @@ class MainWindow(QMainWindow):
             self.current_partitions.pop()
             self.horizontal_lines = []
             self.vertical_lines = []
+            self.triangle_coordinates = []
+            self.first_line_horizontal_check = True
+            self.first_line_vertical_check = True
 
     def draw_rectangles(self):
         if self.net_enabled and self.radio_edit.isChecked():
@@ -815,6 +864,7 @@ class MainWindow(QMainWindow):
                     'y2': coordinates[2],
 
                 }
+                number_triangle += 1
                 self.triangle_coordinates.append(triangle_info)
                 triangle_info = {
                     'number': number_triangle,
