@@ -33,7 +33,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
         self.setWindowTitle("График со слоями")
-        self.setGeometry(100, 100, 800, 1000)
+        self.setGeometry(100, 100, 800, 800)
 
         self.checkbox_net = QCheckBox("Сеточное разбиение", self)
         self.checkbox_net.setGeometry(10, 0, 150, 40)
@@ -42,6 +42,7 @@ class MainWindow(QMainWindow):
         # Создание компоновщиков
         main_layout = QVBoxLayout()
         top_panel_layout = QHBoxLayout()
+        graph_panel_layout = QHBoxLayout()
 
         # виджеты интерфейса
         self.label_thickness = QLabel("Толщина:", self)
@@ -129,6 +130,8 @@ class MainWindow(QMainWindow):
         self.combobox_layer = QComboBox()
         self.combobox_layer.addItems(docs) # по хорошему все названия подтянуть из БД
 
+        self.label_coordinate = QLabel("Координаты:", self)
+
         # объект для графика Matplotlib
         self.figure = Figure()
         self.canvas = FigureCanvas(self.figure)
@@ -153,18 +156,20 @@ class MainWindow(QMainWindow):
         top_panel_layout.addWidget(self.line_edit_part)
         top_panel_layout.addWidget(self.label_density)
         # layout.addWidget(self.line_edit_density)
-        top_panel_layout.addWidget(self.checkbox_auto)
-        top_panel_layout.addWidget(self.radio_vertical)
-        top_panel_layout.addWidget(self.radio_horizontal)
-        top_panel_layout.addWidget(self.radio_edit)
+        graph_panel_layout.addWidget(self.label_coordinate)
+        graph_panel_layout.addWidget(self.checkbox_auto)
+        graph_panel_layout.addWidget(self.radio_vertical)
+        graph_panel_layout.addWidget(self.radio_horizontal)
+        graph_panel_layout.addWidget(self.radio_edit)
         top_panel_layout.addWidget(self.button_add)
         top_panel_layout.addWidget(self.button_next)
-        top_panel_layout.addWidget(self.button_auto_part)
+        graph_panel_layout.addWidget(self.button_auto_part)
         top_panel_layout.addWidget(self.button_undo)
-        top_panel_layout.addWidget(self.button_edit_grid)
+        graph_panel_layout.addWidget(self.button_edit_grid)
         top_panel_layout.addWidget(self.button_save)
         top_panel_layout.addWidget(self.button_save_1)
         layout.addLayout(top_panel_layout)
+        layout.addLayout(graph_panel_layout)
         layout.addWidget(self.canvas)
 
         # виджет для размещения компоновки
@@ -445,6 +450,8 @@ class MainWindow(QMainWindow):
         self.canvas.draw()
 
     def on_motion_notify(self, event):
+
+        self.label_coordinate.setText(f'Координаты: x {event.xdata} y {event.ydata}')
         if self.pressed:
             dx = (event.x - self.prev_x) * self.translation_factor
             dy = (event.y - self.prev_y) * self.translation_factor
