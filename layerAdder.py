@@ -1,5 +1,7 @@
 import sys
 from tkinter import Tk, filedialog
+import io
+from PIL import Image
 
 import pymongo
 import numpy as np
@@ -22,12 +24,11 @@ uri = "mongodb+srv://vovabalaxoncev:Thcvovan7777@cluster0.u499jdc.mongodb.net/?r
 client = MongoClient(uri, server_api=ServerApi('1'))
 # Send a ping to confirm a successful connection
 db = client['BazaProv']
-colletion = db['Plotnosti']
-docs = colletion.distinct('Породы')
-plot = colletion.distinct('Плотность')
-print(docs)
-print(plot)
- 
+collection_density = db['Plotnosti']
+collection_krepi = db['Krepi']
+docs = collection_density.distinct('Породы')
+plot = collection_density.distinct('Плотность')
+name_krep = collection_krepi.distinct('Название')
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -55,23 +56,14 @@ class MainWindow(QMainWindow):
         self.line_edit_width = QLineEdit(self)
         self.line_edit_width.setGeometry(120, 50, 30, 30)
         self.line_edit_width.setVisible(True)
-        
+
         self.label_density = QLabel("Плотность:", self)
         self.label_density.setGeometry(10, 130, 100, 30)
-        # self.line_edit_density = QComboBox()
-        # self.line_edit_density.addItems(plot)
-        # self.line_edit_density.setGeometry(120, 130, 100, 30)
-
-        #self.label_density = QLabel("Плотность:", self)
-        #self.label_density.setGeometry(10, 10, 10, 10)
-        #self.combobox_lam = QComboBox()
-        #self.combobox_lam.addItems(plot)
 
         self.label_part = QLabel("Длина участка в метрах:", self)
         self.label_part.setGeometry(10, 90, 150, 30)
         self.line_edit_part = QLineEdit(self)
         self.line_edit_part.setGeometry(30, 90, 30, 30)
-
 
         self.checkbox_auto = QCheckBox("Авто", self)
         self.checkbox_auto.setGeometry(10, 170, 100, 30)
@@ -127,13 +119,39 @@ class MainWindow(QMainWindow):
         self.radio_edit.toggled.connect(self.toggle_edit)
         self.radio_edit.setVisible(False)
 
+        # слои
         self.combobox_layer = QComboBox()
-        self.combobox_layer.addItems(docs) # по хорошему все названия подтянуть из БД
+        self.combobox_layer.addItems(docs)
+
+        self.label_krep = QLabel("Крепь:", self)
+        # self.label_krep.setGeometry(10, 130, 100, 30)
+        self.combobox_krep = QComboBox()
+        self.combobox_krep.addItems(name_krep)
+        self.label_krep.setVisible(False)
+        self.combobox_krep.setVisible(False)
+
+        self.button_add_krep = QPushButton("Добавить крепи автоматически", self)
+        self.button_add_krep.setGeometry(10, 330, 210, 30)
+        self.button_add_krep.clicked.connect(self.add_krep)
+        self.button_add_krep.setVisible(False)
+
+        self.radio_krep = QRadioButton("Добавить крепи", self)
+        self.radio_krep.setGeometry(10, 370, 150, 40)
+        self.radio_krep.toggled.connect(self.toggle_krep)
+        self.radio_vertical.setVisible(False)
+        self.radio_krep.setVisible(False)
+
+        self.label_width_krep = QLabel("Расстояние между крепями:", self)
+        self.label_width_krep.setGeometry(10, 90, 150, 30)
+        self.line_edit_width_krep = QLineEdit(self)
+        self.line_edit_width_krep.setGeometry(30, 90, 30, 30)
+        self.line_edit_width_krep.setVisible(False)
+        self.label_width_krep.setVisible(False)
 
         self.label_coordinate = QLabel("Координаты:", self)
 
         # объект для графика Matplotlib
-        self.figure = Figure()
+        self.figure = Figure(figsize=(8, 6))
         self.canvas = FigureCanvas(self.figure)
         self.axes = self.figure.add_subplot(111)
 
@@ -145,6 +163,7 @@ class MainWindow(QMainWindow):
 
         # вертикальый компоновщик и добавление виджетов
         layout = QVBoxLayout()
+        krepi_layout = QHBoxLayout()
 
         top_panel_layout.addWidget(self.checkbox_net)
         top_panel_layout.addWidget(self.combobox_layer)
@@ -168,7 +187,15 @@ class MainWindow(QMainWindow):
         graph_panel_layout.addWidget(self.button_edit_grid)
         top_panel_layout.addWidget(self.button_save)
         top_panel_layout.addWidget(self.button_save_1)
+        krepi_layout.addWidget(self.label_krep)
+        krepi_layout.addWidget(self.combobox_krep)
+        krepi_layout.addWidget(self.radio_krep)
+        krepi_layout.addWidget(self.label_width_krep)
+        krepi_layout.addWidget(self.line_edit_width_krep)
+        krepi_layout.addWidget(self.button_add_krep)
+
         layout.addLayout(top_panel_layout)
+        layout.addLayout(krepi_layout)
         layout.addLayout(graph_panel_layout)
         layout.addWidget(self.canvas)
 
@@ -207,6 +234,7 @@ class MainWindow(QMainWindow):
         self.vertical_lines = []  # Список координат вертикальных линий
 
         self.info_layers = []
+        self.info_krep = []
 
         self.first_line_horizontal_check = True
         self.first_line_vertical_check = True
@@ -223,6 +251,8 @@ class MainWindow(QMainWindow):
         self.translation_factor = 0.005  # Коэффициент перемещения
         self.current_x_lim = None
         self.current_y_lim = None
+
+        self.krep_coordinate = []
 
     def auto_part(self):
         if self.info_layers:
@@ -241,6 +271,28 @@ class MainWindow(QMainWindow):
             y = self.first_coordinate_line_y
             for i in range(int(ylim)):
                 if self.first_line_horizontal_check == True:
+                    if self.info_krep:
+                        info_krep = self.info_krep[0]
+                        line_info = {
+                            'x0': 0,
+                            'x1': height,
+                            'y0': info_krep['point8_y'],
+                            'y1': info_krep['point8_y']
+                        }
+                        self.horizontal_lines.append(line_info)
+                        # Рисование линии по всей ширине графика
+                        self.axes.plot([0, height], [info_krep['point8_y'],
+                                                     info_krep['point8_y']], color='red')
+                        line_info = {
+                            'x0': 0,
+                            'x1': height,
+                            'y0': info_krep['point1_y'],
+                            'y1': info_krep['point1_y']
+                        }
+                        self.horizontal_lines.append(line_info)
+                        # Рисование линии по всей ширине графика
+                        self.axes.plot([0, height], [info_krep['point1_y'],
+                                                     info_krep['point1_y']], color='red')
                     line_info = {
                         'x0': 0,
                         'x1': height,
@@ -249,7 +301,8 @@ class MainWindow(QMainWindow):
                     }
                     self.horizontal_lines.append(line_info)
                     # Рисование линии по всей ширине графика
-                    self.axes.plot([0, height], [self.first_coordinate_line_y, self.first_coordinate_line_y], color='red')
+                    self.axes.plot([0, height], [self.first_coordinate_line_y, self.first_coordinate_line_y],
+                                   color='red')
                     line_info = {
                         'x0': 0,
                         'x1': height,
@@ -258,7 +311,8 @@ class MainWindow(QMainWindow):
                     }
                     self.horizontal_lines.append(line_info)
                     # Рисование линии по всей ширине графика
-                    self.axes.plot([0, height], [self.first_coordinate_line_y + ylim, self.first_coordinate_line_y + ylim],
+                    self.axes.plot([0, height],
+                                   [self.first_coordinate_line_y + ylim, self.first_coordinate_line_y + ylim],
                                    color='red')
                     self.first_line_horizontal_check = False
 
@@ -272,10 +326,25 @@ class MainWindow(QMainWindow):
                 # Рисование линии по всей ширине графика
                 self.axes.plot([0, height], [y, y], color='red')
                 self.canvas.draw()
-                y+=1
+                y += 1
 
             for i in range(height):
                 if self.first_line_vertical_check == True:
+                    if self.info_krep:
+                        for index, info_krep in enumerate(self.info_krep):
+                            for i in range(4):
+                                key = 'point{}_x'.format(i + 1)
+                                line_info = {
+                                    'x0': info_krep[key],
+                                    'x1': info_krep[key],
+                                    'y0': self.first_coordinate_line_y,
+                                    'y1': self.first_coordinate_line_y + ylim
+                                }
+                                self.vertical_lines.append(line_info)
+                                # Рисование линии по всей ширине графика
+                                self.axes.plot([info_krep[key], info_krep[key]],
+                                               [self.first_coordinate_line_y, self.first_coordinate_line_y + ylim],
+                                               color='blue')
                     line_info = {
                         'x0': 0,
                         'x1': 0,
@@ -294,10 +363,10 @@ class MainWindow(QMainWindow):
                     }
                     self.vertical_lines.append(line_info)
                     # Рисование линии по всей ширине графика
-                    self.axes.plot([height, height], [self.first_coordinate_line_y, self.first_coordinate_line_y + ylim],
+                    self.axes.plot([height, height],
+                                   [self.first_coordinate_line_y, self.first_coordinate_line_y + ylim],
                                    color='blue')
                     self.first_line_vertical_check = False
-
 
                 line_info = {
                     'x0': x,
@@ -307,7 +376,8 @@ class MainWindow(QMainWindow):
                 }
                 self.vertical_lines.append(line_info)
                 # Рисование линии по всей ширине графика
-                self.axes.plot([x, x], [self.first_coordinate_line_y, self.first_coordinate_line_y + ylim], color='blue')
+                self.axes.plot([x, x], [self.first_coordinate_line_y, self.first_coordinate_line_y + ylim],
+                               color='blue')
                 x += 1
                 self.canvas.draw()
         else:
@@ -316,7 +386,6 @@ class MainWindow(QMainWindow):
             msg.setText("Возникли проблемы со слоями!")
             msg.setIcon(QMessageBox.Warning)
             msg.exec_()
-
 
     def on_mouse_press(self, event):
         if event.button == MouseButton.MIDDLE:
@@ -337,6 +406,89 @@ class MainWindow(QMainWindow):
                     self.dragging = True
                     self.x_grid_edit = x
                     self.y_grid_edit = y
+        if self.radio_krep.isChecked() and self.rectangles and event.button == MouseButton.LEFT:
+            result = collection_krepi.find({'Название': str(self.combobox_krep.currentText())})
+            image_data = None
+            long = None
+            for doc in result:
+                image_data = doc['Изображение']
+                long = doc['Козырек длина']
+                height = doc['Высота']
+                point1_x = (doc['Точка в.л.у'])[0]
+                point1_y = (doc['Точка в.л.у'])[1]
+                point2_x = (doc['Точка в.л.у.2'])[0]
+                point2_y = (doc['Точка в.л.у.2'])[1]
+                point3_x = (doc['Точка в.п.у'])[0]
+                point3_y = (doc['Точка в.п.у'])[1]
+                point4_x = (doc['Точка в.п.у.2'])[0]
+                point4_y = (doc['Точка в.п.у.2'])[1]
+                point5_x = (doc['Точка н.л.у'])[0]
+                point5_y = (doc['Точка н.л.у'])[1]
+                point6_x = (doc['Точка н.л.у.2'])[0]
+                point6_y = (doc['Точка н.л.у.2'])[1]
+                point7_x = (doc['Точка н.п.у'])[0]
+                point7_y = (doc['Точка н.п.у'])[1]
+                point8_x = (doc['Точка н.п.у.2'])[0]
+                point8_y = (doc['Точка н.п.у.2'])[1]
+
+            layer = self.info_layers[len(self.info_layers)-1]
+
+            img = Image.open(io.BytesIO(image_data))
+            img = img.convert('RGBA')
+            x1 = event.xdata
+            x = x1+long
+            y1 = layer['y0']
+            y = layer['y1']
+            edit_height = abs(abs(y1)-abs(y) - height)
+            y1_edit = y1 - edit_height
+
+            point1_x += x1
+            point1_y += y1_edit
+            self.axes.scatter(point1_x, point1_y, color='red')
+            point2_x += x1
+            point2_y += y1_edit
+            self.axes.scatter(point2_x, point2_y, color='red')
+            point3_x += x1
+            point3_y += y1_edit
+            self.axes.scatter(point3_x, point3_y, color='red')
+            point4_x += x1
+            point4_y += y1_edit
+            self.axes.scatter(point4_x, point4_y, color='red')
+            point5_x += x1
+            point5_y += y1
+            self.axes.scatter(point5_x, point5_y, color='red')
+            point6_x += x1
+            point6_y += y1
+            self.axes.scatter(point6_x, point6_y, color='red')
+            point7_x += x1
+            point7_y += y1
+            self.axes.scatter(point7_x, point7_y, color='red')
+            point8_x += x1
+            point8_y += y1
+            self.axes.scatter(point8_x, point8_y, color='red')
+
+            coordinate_info = {
+                'point1_x': point1_x,
+                'point1_y': point1_y,
+                'point2_x': point2_x,
+                'point2_y': point2_y,
+                'point3_x': point3_x,
+                'point3_y': point3_y,
+                'point4_x': point4_x,
+                'point4_y': point4_y,
+                'point5_x': point5_x,
+                'point5_y': point5_y,
+                'point6_x': point6_x,
+                'point6_y': point6_y,
+                'point7_x': point7_x,
+                'point7_y': point7_y,
+                'point8_x': point8_x,
+                'point8_y': point8_y,
+            }
+            self.info_krep.append(coordinate_info)
+            self.axes.imshow(img, extent=([x1, x, y1, y]), aspect='equal', zorder=10)
+
+            self.canvas.draw()
 
         else:
             if self.info_layers:
@@ -358,6 +510,29 @@ class MainWindow(QMainWindow):
                         ylim = height_sum
                         if self.radio_horizontal.isChecked():
                             if self.first_line_horizontal_check == True:
+                                if self.info_krep:
+                                    info_krep = self.info_krep[0]
+                                    line_info = {
+                                        'x0': 0,
+                                        'x1': height,
+                                        'y0': info_krep['point8_y'],
+                                        'y1': info_krep['point8_y']
+                                    }
+                                    self.horizontal_lines.append(line_info)
+                                    # Рисование линии по всей ширине графика
+                                    self.axes.plot([0, height], [info_krep['point8_y'],
+                                                                 info_krep['point8_y']], color='red')
+                                    line_info = {
+                                        'x0': 0,
+                                        'x1': height,
+                                        'y0': info_krep['point1_y'],
+                                        'y1': info_krep['point1_y']
+                                    }
+                                    self.horizontal_lines.append(line_info)
+                                    # Рисование линии по всей ширине графика
+                                    self.axes.plot([0, height], [info_krep['point1_y'],
+                                                                 info_krep['point1_y']], color='red')
+
                                 line_info = {
                                     'x0': 0,
                                     'x1': height,
@@ -366,7 +541,8 @@ class MainWindow(QMainWindow):
                                 }
                                 self.horizontal_lines.append(line_info)
                                 # Рисование линии по всей ширине графика
-                                self.axes.plot([0, height], [self.first_coordinate_line_y+ylim, self.first_coordinate_line_y+ylim], color='red')
+                                self.axes.plot([0, height], [self.first_coordinate_line_y + ylim,
+                                                             self.first_coordinate_line_y + ylim], color='red')
                                 for layer in self.info_layers:
                                     line_info = {
                                         'x0': 0,
@@ -387,43 +563,61 @@ class MainWindow(QMainWindow):
                             }
                             self.horizontal_lines.append(line_info)
                             # Рисование линии по всей ширине графика
-                            self.axes.plot([0,height], [y, y], color='red')
+                            self.axes.plot([0, height], [y, y], color='red')
                             self.canvas.draw()
-
 
                         if self.radio_vertical.isChecked():
                             if self.first_line_vertical_check == True:
+                                if self.info_krep:
+                                    for index, info_krep in enumerate(self.info_krep):
+                                        for i in range(4):
+                                            key = 'point{}_x'.format(i+1)
+                                            line_info = {
+                                                'x0': info_krep[key],
+                                                'x1': info_krep[key],
+                                                'y0': self.first_coordinate_line_y,
+                                                'y1': self.first_coordinate_line_y + ylim
+                                            }
+                                            self.vertical_lines.append(line_info)
+                                            # Рисование линии по всей ширине графика
+                                            self.axes.plot([info_krep[key], info_krep[key]],
+                                                           [self.first_coordinate_line_y, self.first_coordinate_line_y + ylim],
+                                                           color='blue')
+
                                 line_info = {
                                     'x0': 0,
                                     'x1': 0,
                                     'y0': self.first_coordinate_line_y,
-                                    'y1': self.first_coordinate_line_y+ylim
+                                    'y1': self.first_coordinate_line_y + ylim
                                 }
                                 self.vertical_lines.append(line_info)
                                 # Рисование линии по всей ширине графика
-                                self.axes.plot([0, 0], [self.first_coordinate_line_y, self.first_coordinate_line_y+ylim], color='blue')
+                                self.axes.plot([0, 0],
+                                               [self.first_coordinate_line_y, self.first_coordinate_line_y + ylim],
+                                               color='blue')
                                 line_info = {
                                     'x0': height,
                                     'x1': height,
                                     'y0': self.first_coordinate_line_y,
-                                    'y1': self.first_coordinate_line_y+ylim
+                                    'y1': self.first_coordinate_line_y + ylim
                                 }
                                 self.vertical_lines.append(line_info)
                                 # Рисование линии по всей ширине графика
-                                self.axes.plot([height, height], [self.first_coordinate_line_y, self.first_coordinate_line_y+ylim], color='blue')
+                                self.axes.plot([height, height],
+                                               [self.first_coordinate_line_y, self.first_coordinate_line_y + ylim],
+                                               color='blue')
                                 self.first_line_vertical_check = False
 
                             line_info = {
                                 'x0': x,
                                 'x1': x,
                                 'y0': self.first_coordinate_line_y,
-                                'y1': self.first_coordinate_line_y+ylim
+                                'y1': self.first_coordinate_line_y + ylim
                             }
                             self.vertical_lines.append(line_info)
                             # Рисование линии по всей ширине графика
-                            self.axes.plot([x, x], [self.first_coordinate_line_y, self.first_coordinate_line_y+ylim], color='blue')
-
-
+                            self.axes.plot([x, x], [self.first_coordinate_line_y, self.first_coordinate_line_y + ylim],
+                                           color='blue')
 
                             self.canvas.draw()
                         pass
@@ -450,8 +644,8 @@ class MainWindow(QMainWindow):
         self.canvas.draw()
 
     def on_motion_notify(self, event):
-
-        self.label_coordinate.setText(f'Координаты: x {event.xdata} y {event.ydata}')
+        if event.xdata is not None:
+            self.label_coordinate.setText(f'Координаты: x {round(event.xdata,2)} y {round(event.ydata,2)}')
         if self.pressed:
             dx = (event.x - self.prev_x) * self.translation_factor
             dy = (event.y - self.prev_y) * self.translation_factor
@@ -476,19 +670,19 @@ class MainWindow(QMainWindow):
                 y0 = round(triangle['y0'], 1)
                 y1 = round(triangle['y1'], 1)
                 y2 = round(triangle['y2'], 1)
-                if y0 ==  round(y_grid_edit,1) and x0 ==  round(x_grid_edit,1):
+                if y0 == round(y_grid_edit, 1) and x0 == round(x_grid_edit, 1):
                     triangle['y0'] = y
                     triangle['x0'] = x
                     self.y_grid_edit = y
                     self.x_grid_edit = x
 
-                if y1 == round(y_grid_edit,1) and x1 == round(x_grid_edit,1):
+                if y1 == round(y_grid_edit, 1) and x1 == round(x_grid_edit, 1):
                     triangle['y1'] = y
                     triangle['x1'] = x
                     self.y_grid_edit = y
                     self.x_grid_edit = x
 
-                if y2 == round(y_grid_edit,1) and x2 == round(x_grid_edit,1):
+                if y2 == round(y_grid_edit, 1) and x2 == round(x_grid_edit, 1):
                     triangle['y2'] = y
                     triangle['x2'] = x
                     self.y_grid_edit = y
@@ -517,6 +711,9 @@ class MainWindow(QMainWindow):
     def toggle_vertical_line(self, checked):
         return
 
+    def toggle_krep(self, checked):
+        return
+
     def toggle_horizontal_line(self, checked):
         return
 
@@ -537,12 +734,104 @@ class MainWindow(QMainWindow):
         self.button_auto_part.setVisible(self.net_enabled)
         self.button_edit_grid.setVisible(self.net_enabled)
         self.radio_edit.setVisible(self.net_enabled)
+        self.button_add_krep.setVisible(self.net_enabled)
+        self.radio_vertical.setVisible(self.net_enabled)
+        self.line_edit_width_krep.setVisible(self.net_enabled)
+        self.label_width_krep.setVisible(self.net_enabled)
+        self.radio_krep.setVisible(self.net_enabled)
+        self.combobox_krep.setVisible(self.net_enabled)
         self.button_next.setVisible(not self.net_enabled)
         self.button_save.setVisible(not self.net_enabled)
         self.checkbox_auto.setVisible(not self.net_enabled)
         self.label_width.setVisible(not self.net_enabled)
         self.line_edit_width.setVisible(not self.net_enabled)
 
+    def add_krep(self):
+        self.line_edit_part.setReadOnly(True)
+        if self.net_enabled:
+            all_width = float(self.line_edit_part.text())
+            distance = float(self.line_edit_width_krep.text())
+            coordinate_x1_distance = 0
+            while coordinate_x1_distance < all_width:
+                result = collection_krepi.find({'Название': str(self.combobox_krep.currentText())})
+                image_data = None
+                long = None
+                for doc in result:
+                    image_data = doc['Изображение']
+                    long = doc['Козырек длина']
+                    height = doc['Высота']
+                    point1_x = (doc['Точка в.л.у'])[0]
+                    point1_y = (doc['Точка в.л.у'])[1]
+                    point2_x = (doc['Точка в.л.у.2'])[0]
+                    point2_y = (doc['Точка в.л.у.2'])[1]
+                    point3_x = (doc['Точка в.п.у'])[0]
+                    point3_y = (doc['Точка в.п.у'])[1]
+                    point4_x = (doc['Точка в.п.у.2'])[0]
+                    point4_y = (doc['Точка в.п.у.2'])[1]
+                    point5_x = (doc['Точка н.л.у'])[0]
+                    point5_y = (doc['Точка н.л.у'])[1]
+                    point6_x = (doc['Точка н.л.у.2'])[0]
+                    point6_y = (doc['Точка н.л.у.2'])[1]
+                    point7_x = (doc['Точка н.п.у'])[0]
+                    point7_y = (doc['Точка н.п.у'])[1]
+                    point8_x = (doc['Точка н.п.у.2'])[0]
+                    point8_y = (doc['Точка н.п.у.2'])[1]
+
+                layer = self.info_layers[len(self.info_layers) - 1]
+
+                img = Image.open(io.BytesIO(image_data))
+                img = img.convert('RGBA')
+                x1 = coordinate_x1_distance
+                x = x1 + long
+                y1 = layer['y0']
+                y = layer['y1']
+                edit_height = abs(abs(y1) - abs(y) - height)
+                y1_edit = y1 - edit_height
+
+                point1_x += x1
+                point1_y += y1_edit
+                point2_x += x1
+                point2_y += y1_edit
+                point3_x += x1
+                point3_y += y1_edit
+                point4_x += x1
+                point4_y += y1_edit
+                point5_x += x1
+                point5_y += y1
+                point6_x += x1
+                point6_y += y1
+                point7_x += x1
+                point7_y += y1
+                point8_x += x1
+                point8_y += y1
+
+                coordinate_info = {
+                    'point1_x': point1_x,
+                    'point1_y': point1_y,
+                    'point2_x': point2_x,
+                    'point2_y': point2_y,
+                    'point3_x': point3_x,
+                    'point3_y': point3_y,
+                    'point4_x': point4_x,
+                    'point4_y': point4_y,
+                    'point5_x': point5_x,
+                    'point5_y': point5_y,
+                    'point6_x': point6_x,
+                    'point6_y': point6_y,
+                    'point7_x': point7_x,
+                    'point7_y': point7_y,
+                    'point8_x': point8_x,
+                    'point8_y': point8_y,
+                }
+                self.info_krep.append(coordinate_info)
+                self.axes.imshow(img, extent=([x1, x, y1, y]), aspect='equal', zorder=10)
+                x_min, x_max = self.current_x_lim
+                y_min, y_max = self.current_y_lim
+                self.axes.set_xlim([x_min, x_max])
+                self.axes.set_ylim(
+                    [y_min, y_max])
+                self.canvas.draw()
+                coordinate_x1_distance += distance + long
 
     def add_rectangle(self):
         self.line_edit_part.setReadOnly(True)
@@ -574,35 +863,13 @@ class MainWindow(QMainWindow):
                 msg.exec_()
                 return
             rr = self.combobox_layer.currentText()
-            result = colletion.find({'Породы': str(self.combobox_layer.currentText())})
+            result = collection_density.find({'Породы': str(self.combobox_layer.currentText())})
             rect_color = None
             density = None
             for doc in result:
                 density = doc['Плотность']
                 rect_color = doc['Цвет']
             self.label_density.setText(f'Плотность: {density}')
-            # надо добавить чекбокс какой-нибудь, типо авто метрики, и добавить условие, что если авто, то density и тд подтягиваются из БД
-            # ну и прописать логику определения слоев, скорее всего будет поиск по названию слоя в БД
-
-                # Выбор цвета слоя
-            # color_dialog = QColorDialog()
-            # color = color_dialog.getColor()
-            # if color.isValid():
-            #     rect_color = color.name()
-            # else:
-            #     return
-
-
-            #rect_color = 'pink' # тут должен быть цвет слоя из БД
-
-            # Ввод названия слоя
-            # name, ok = QInputDialog.getText(self, 'Введите название', 'Название:')
-            # if ok:
-            #     rect_name = name
-            # else:
-            #     return
-
-
 
             if self.check_first != 0:
                 x = 0
@@ -672,40 +939,15 @@ class MainWindow(QMainWindow):
                 msg.setIcon(QMessageBox.Warning)
                 msg.exec_()
                 return
-            #if (self.line_edit_density.text()).isdigit():
-            #    density = float(self.line_edit_density.text())
-            #else:
-            #    msg = QMessageBox()
-            #    msg.setWindowTitle("Ошибка")
-            #    msg.setText("Некорректное значение")
-            #    msg.setIcon(QMessageBox.Warning)
-            #    msg.exec_()
-            #    return
 
-            # Выбор цвета слоя
-            #color_dialog = QColorDialog()
-            #color = color_dialog.getColor()
-            #if color.isValid():
-            #    rect_color = color.name()
-            #else:
-            #    return
-            
             color_dialog = QColorDialog()
             color = color_dialog.getColor()
             if color.isValid():
                 rect_color = color.name()
             else:
                 return
-            
-            #rect_name = self.combobox_layer.currentText('#a9b497')
 
             rect_name = self.combobox_layer.currentText()
-            # Ввод названия слоя
-            # name, ok = QInputDialog.getText(self, 'Введите название', 'Название:')
-            # if ok:
-            #     rect_name = name
-            # else:
-            #     return
 
             if self.check_first != 0:
                 x = 0
@@ -716,12 +958,10 @@ class MainWindow(QMainWindow):
                 y = 0 - height
                 self.check_first += 1
 
-
             rect = patches.Rectangle((x, y), width, height, facecolor=rect_color)
             rect.set_label(rect_name)
             self.rectangles.append(rect)
             self.draw_rectangles()
-
 
     def next_partition(self):
         if (self.line_edit_part.text()).isdigit():
@@ -779,7 +1019,8 @@ class MainWindow(QMainWindow):
                                    (rect.get_x() + rect.get_width() / 2, rect.get_y() + rect.get_height() / 2),
                                    ha='center', va='center')
             self.current_x_lim = [0, float(self.line_edit_part.text())]
-            self.current_y_lim = [0 - float(self.line_edit_thickness.text()) * 2, self.final_Y + float(self.line_edit_thickness.text())]
+            self.current_y_lim = [0 - float(self.line_edit_thickness.text()) * 2,
+                                  self.final_Y + float(self.line_edit_thickness.text())]
             self.axes.set_xlim([0, float(self.line_edit_part.text())])
             self.axes.set_ylim(
                 [0 - float(self.line_edit_thickness.text()) * 2, self.final_Y + float(self.line_edit_thickness.text())])
@@ -788,12 +1029,13 @@ class MainWindow(QMainWindow):
             self.axes.clear()
             for rect in self.rectangles:
                 self.axes.add_patch(rect)
-                self.axes.annotate(rect.get_label(), (rect.get_x() + rect.get_width() / 2, rect.get_y() + rect.get_height() / 2),
+                self.axes.annotate(rect.get_label(),
+                                   (rect.get_x() + rect.get_width() / 2, rect.get_y() + rect.get_height() / 2),
                                    ha='center', va='center')
             self.axes.set_xlim([0, float(self.line_edit_width.text())])
-            self.axes.set_ylim([0 - float(self.line_edit_thickness.text()) * 2, self.final_Y + float(self.line_edit_thickness.text())])
+            self.axes.set_ylim(
+                [0 - float(self.line_edit_thickness.text()) * 2, self.final_Y + float(self.line_edit_thickness.text())])
             self.canvas.draw()
-
 
     def save_partitions(self):
         if self.save_current_partition():
@@ -858,7 +1100,7 @@ class MainWindow(QMainWindow):
                     all_coordinates.append([line_horizontal[0], line_vertical[0], line_horizontal[1], line_vertical[1]])
             number_triangle = 0
             for coordinates in all_coordinates:
-                number_triangle+=1
+                number_triangle += 1
                 # self.axes.plot([coordinates[1], coordinates[3]], [coordinates[0], coordinates[2]],
                 #                color='red')
                 triangle_info = {
@@ -958,7 +1200,7 @@ class MainWindow(QMainWindow):
 
             cells = []
 
-            #сохранение клеток
+            # сохранение клеток
             # for layer in self.info_layers:
             #     x0_layer = layer['x0']
             #     x1_layer = layer['x1']
@@ -983,8 +1225,10 @@ class MainWindow(QMainWindow):
                 y0_layer = layer['y0']
                 y1_layer = layer['y1']
                 for index, coordinates in enumerate(self.triangle_coordinates):
-                    if coordinates['x0'] >= x0_layer and coordinates['y0'] >= y0_layer and coordinates['x1'] <= x1_layer and coordinates['y1'] <= y1_layer \
-                        and coordinates['x2'] >= x0_layer and coordinates['x2'] <= x1_layer and coordinates['y2'] >= y0_layer and coordinates['y2'] <= y1_layer:
+                    if coordinates['x0'] >= x0_layer and coordinates['y0'] >= y0_layer and coordinates[
+                        'x1'] <= x1_layer and coordinates['y1'] <= y1_layer \
+                            and coordinates['x2'] >= x0_layer and coordinates['x2'] <= x1_layer and coordinates[
+                        'y2'] >= y0_layer and coordinates['y2'] <= y1_layer:
                         cell_info = {
                             'name': layer['name'],
                             'color': layer['color'],
@@ -1084,7 +1328,6 @@ class MainWindow(QMainWindow):
             return True
         else:
             return False
-
 
 
 if __name__ == '__main__':
