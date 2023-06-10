@@ -325,7 +325,7 @@ class MainWindow(QMainWindow):
                 self.horizontal_lines.append(line_info)
                 # Рисование линии по всей ширине графика
                 self.axes.plot([0, height], [y, y], color='red')
-                self.canvas.draw()
+                #self.canvas.draw()
                 y += 1
 
             for i in range(height):
@@ -379,7 +379,7 @@ class MainWindow(QMainWindow):
                 self.axes.plot([x, x], [self.first_coordinate_line_y, self.first_coordinate_line_y + ylim],
                                color='blue')
                 x += 1
-                self.canvas.draw()
+            self.canvas.draw()
         else:
             msg = QMessageBox()
             msg.setWindowTitle("Ошибка")
@@ -402,7 +402,7 @@ class MainWindow(QMainWindow):
                 y0 = round(coordinate['y0'], 1)
                 y1 = round(coordinate['y1'], 1)
                 y2 = round(coordinate['y2'], 1)
-                if (x == x0 or x == x1 or x == x2) and (y == y0 or y == y1 or y == y2):
+                if (x == x0 or x == x1 or x == x2 or x == x0+0.1 or x == x1+0.1 or x == x2+0.1 or x == x0-0.1 or x == x1-0.1 or x == x2-0.1) and (y == y0 or y == y1 or y == y2 or y == y0+0.1 or y == y1+0.1 or y == y2+0.1 or y == y0-0.1 or y == y1-0.1 or y == y2-0.1):
                     self.dragging = True
                     self.x_grid_edit = x
                     self.y_grid_edit = y
@@ -487,10 +487,11 @@ class MainWindow(QMainWindow):
             self.axes.imshow(img, extent=([x1, x, y1, y]), aspect='equal', zorder=10)
             x_min, x_max = self.current_x_lim
             y_min, y_max = self.current_y_lim
-            self.axes.set_xlim([x_min, x_max])
-            self.axes.set_ylim(
-                [y_min, y_max+(x_max/10)])
+
+            self.figure.tight_layout()
+            self.axes.set_aspect('auto')
             self.canvas.draw()
+
 
         else:
             if self.info_layers:
@@ -672,19 +673,19 @@ class MainWindow(QMainWindow):
                 y0 = round(triangle['y0'], 1)
                 y1 = round(triangle['y1'], 1)
                 y2 = round(triangle['y2'], 1)
-                if y0 == round(y_grid_edit, 1) and x0 == round(x_grid_edit, 1):
+                if (y0 == round(y_grid_edit, 1) and x0 == round(x_grid_edit, 1)) or (y0 == round(y_grid_edit, 1)+0.1 and x0 == round(x_grid_edit, 1)+0.1) or (y0 == round(y_grid_edit, 1)-0.1 and x0 == round(x_grid_edit, 1)-0.1):
                     triangle['y0'] = y
                     triangle['x0'] = x
                     self.y_grid_edit = y
                     self.x_grid_edit = x
 
-                if y1 == round(y_grid_edit, 1) and x1 == round(x_grid_edit, 1):
+                if (y1 == round(y_grid_edit, 1) and x1 == round(x_grid_edit, 1)) or (y1 == round(y_grid_edit, 1)+0.1 and x1 == round(x_grid_edit, 1)+0.1) or (y1 == round(y_grid_edit, 1)-0.1 and x1 == round(x_grid_edit, 1)-0.1):
                     triangle['y1'] = y
                     triangle['x1'] = x
                     self.y_grid_edit = y
                     self.x_grid_edit = x
 
-                if y2 == round(y_grid_edit, 1) and x2 == round(x_grid_edit, 1):
+                if (y2 == round(y_grid_edit, 1) and x2 == round(x_grid_edit, 1)) or (y2 == round(y_grid_edit, 1)+0.1 and x2 == round(x_grid_edit, 1)+0.1) or (y2 == round(y_grid_edit, 1)-0.1 and x2 == round(x_grid_edit, 1)-0.1):
                     triangle['y2'] = y
                     triangle['x2'] = x
                     self.y_grid_edit = y
@@ -811,8 +812,10 @@ class MainWindow(QMainWindow):
                 y_min, y_max = self.current_y_lim
                 self.axes.set_xlim([x_min, x_max])
                 self.axes.set_ylim(
-                    [y_min*(x_max/2), y_max*(x_max/2)])
+                    [y_min+(x_max/2), y_max+(x_max/2)])
                 coordinate_x1_distance += distance + long
+            self.figure.tight_layout()
+            self.axes.set_aspect('auto')
             self.canvas.draw()
         else:
             msg = QMessageBox()
@@ -838,7 +841,7 @@ class MainWindow(QMainWindow):
         else:
             msg = QMessageBox()
             msg.setWindowTitle("Ошибка")
-            msg.setText("1 Некорректное значение")
+            msg.setText("Некорректное значение")
             msg.setIcon(QMessageBox.Warning)
             msg.exec_()
             return
@@ -848,7 +851,7 @@ class MainWindow(QMainWindow):
         else:
             msg = QMessageBox()
             msg.setWindowTitle("Ошибка")
-            msg.setText("2 Некорректное значение")
+            msg.setText("Некорректное значение")
             msg.setIcon(QMessageBox.Warning)
             msg.exec_()
             return
@@ -946,6 +949,8 @@ class MainWindow(QMainWindow):
             self.axes.set_xlim([x_min, x_max])
             self.axes.set_ylim(
                 [y_min, y_max])
+            self.figure.tight_layout()
+            self.axes.set_aspect('auto')
             # self.axes.autoscale(enable=False, axis='both')
             self.canvas.draw()
         if not self.radio_edit.isChecked():
@@ -961,6 +966,8 @@ class MainWindow(QMainWindow):
             self.axes.set_xlim([0, float(self.line_edit_part.text())])
             self.axes.set_ylim(
                 [0 - float(self.line_edit_thickness.text()) * 2, self.final_Y + float(self.line_edit_thickness.text())])
+            self.figure.tight_layout()
+            self.axes.set_aspect('auto')
             self.canvas.draw()
 
 
@@ -994,7 +1001,6 @@ class MainWindow(QMainWindow):
                 x1_vert = line_vertical['x1']
 
                 if first_w == 0:
-                    x1_cell = x1_vert
                     x_pred = x1_vert
                     first_w += 1
                     continue
@@ -1005,7 +1011,6 @@ class MainWindow(QMainWindow):
                 first_w += 1
 
             first_w = 0
-            x_pred = 0
 
             for line_horizontal in self.horizontal_lines:
 
@@ -1025,57 +1030,64 @@ class MainWindow(QMainWindow):
             for line_horizontal in horiz_wall:
                 for line_vertical in vert_wall:
                     all_coordinates.append([line_horizontal[0], line_vertical[0], line_horizontal[1], line_vertical[1]])
-            number_triangle = 0
-            for coordinates in all_coordinates:
-                number_triangle += 1
-                # self.axes.plot([coordinates[1], coordinates[3]], [coordinates[0], coordinates[2]],
-                #                color='red')
-                triangle_info = {
-                    'number': number_triangle,
-                    'x0': coordinates[1],
-                    'x1': coordinates[3],
-                    'x2': coordinates[1],
-                    'y0': coordinates[0],
-                    'y1': coordinates[2],
-                    'y2': coordinates[2],
+            self.draw_triangles(all_coordinates)
 
-                }
-                number_triangle += 1
-                self.triangle_coordinates.append(triangle_info)
-                triangle_info = {
-                    'number': number_triangle,
-                    'x0': coordinates[1],
-                    'x1': coordinates[3],
-                    'x2': coordinates[3],
-                    'y0': coordinates[0],
-                    'y1': coordinates[2],
-                    'y2': coordinates[0],
-
-                }
-                self.triangle_coordinates.append(triangle_info)
-
-            # self.canvas.draw()
-            self.draw_rectangles()
-            for index, info_krep in enumerate(self.info_krep):
-                self.axes.imshow(info_krep['image'], extent=([info_krep['x1'], info_krep['x'], info_krep['y1'], info_krep['y']]), aspect='equal', zorder=10)
-
-            for index, triangle in enumerate(self.triangle_coordinates):
-                x0 = float(triangle['x0'])
-                x1 = float(triangle['x1'])
-                x2 = float(triangle['x2'])
-                y0 = float(triangle['y0'])
-                y1 = float(triangle['y1'])
-                y2 = float(triangle['y2'])
-                x = [x0, x1, x2]
-                y = [y0, y1, y2]
-                self.axes.plot(x + [x[0]], y + [y[0]], color='red')
-            self.canvas.draw()
         else:
             msg = QMessageBox()
             msg.setWindowTitle("Ошибка")
             msg.setText("Возникли проблемы со линиями сетки!")
             msg.setIcon(QMessageBox.Warning)
             msg.exec_()
+
+    def draw_triangles(self, all_coordinates):
+        number_triangle = 0
+        for coordinates in all_coordinates:
+            number_triangle += 1
+            triangle_info = {
+                'number': number_triangle,
+                'x0': coordinates[1],
+                'x1': coordinates[3],
+                'x2': coordinates[1],
+                'y0': coordinates[0],
+                'y1': coordinates[2],
+                'y2': coordinates[2],
+
+            }
+            number_triangle += 1
+            self.triangle_coordinates.append(triangle_info)
+            triangle_info = {
+                'number': number_triangle,
+                'x0': coordinates[1],
+                'x1': coordinates[3],
+                'x2': coordinates[3],
+                'y0': coordinates[0],
+                'y1': coordinates[2],
+                'y2': coordinates[0],
+
+            }
+            self.triangle_coordinates.append(triangle_info)
+        self.draw_rectangles()
+        # self.canvas.draw()
+        if self.info_krep:
+            for index, info_krep in enumerate(self.info_krep):
+                self.axes.imshow(info_krep['image'],
+                                 extent=([info_krep['x1'], info_krep['x'], info_krep['y1'], info_krep['y']]),
+                                 aspect='equal', zorder=10)
+
+        for index, triangle in enumerate(self.triangle_coordinates):
+            x0 = float(triangle['x0'])
+            x1 = float(triangle['x1'])
+            x2 = float(triangle['x2'])
+            y0 = float(triangle['y0'])
+            y1 = float(triangle['y1'])
+            y2 = float(triangle['y2'])
+            x = [x0, x1, x2]
+            y = [y0, y1, y2]
+            self.axes.plot(x + [x[0]], y + [y[0]], color='red', zorder=11)
+
+        self.figure.tight_layout()
+        self.axes.set_aspect('auto')
+        self.canvas.draw()
 
     def save_grid_information(self):
         if self.triangle_coordinates:
