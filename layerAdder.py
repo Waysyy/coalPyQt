@@ -36,9 +36,9 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("График со слоями")
         self.setGeometry(100, 100, 800, 800)
 
-        self.checkbox_net = QCheckBox("Сеточное разбиение", self)
-        self.checkbox_net.setGeometry(10, 0, 150, 40)
-        self.checkbox_net.stateChanged.connect(self.toggle_net)
+        # self.checkbox_net = QCheckBox("Сеточное разбиение", self)
+        # self.checkbox_net.setGeometry(10, 0, 150, 40)
+        # self.checkbox_net.stateChanged.connect(self.toggle_net)
 
         # Создание компоновщиков
         main_layout = QVBoxLayout()
@@ -51,11 +51,11 @@ class MainWindow(QMainWindow):
         self.line_edit_thickness = QLineEdit(self)
         self.line_edit_thickness.setGeometry(30, 10, 30, 30)
 
-        self.label_width = QLabel("Ширина разбиений:", self)
-        self.label_width.setGeometry(10, 50, 100, 30)
-        self.line_edit_width = QLineEdit(self)
-        self.line_edit_width.setGeometry(120, 50, 30, 30)
-        self.line_edit_width.setVisible(True)
+        # self.label_width = QLabel("Ширина разбиений:", self)
+        # self.label_width.setGeometry(10, 50, 100, 30)
+        # self.line_edit_width = QLineEdit(self)
+        # self.line_edit_width.setGeometry(120, 50, 30, 30)
+        # self.line_edit_width.setVisible(True)
 
         self.label_density = QLabel("Плотность:", self)
         self.label_density.setGeometry(10, 130, 100, 30)
@@ -65,24 +65,24 @@ class MainWindow(QMainWindow):
         self.line_edit_part = QLineEdit(self)
         self.line_edit_part.setGeometry(30, 90, 30, 30)
 
-        self.checkbox_auto = QCheckBox("Авто", self)
-        self.checkbox_auto.setGeometry(10, 170, 100, 30)
-        self.checkbox_auto.stateChanged.connect(self.toggle_auto_save)
-        self.checkbox_auto.setVisible(True)
+        # self.checkbox_auto = QCheckBox("Авто", self)
+        # self.checkbox_auto.setGeometry(10, 170, 100, 30)
+        # self.checkbox_auto.stateChanged.connect(self.toggle_auto_save)
+        # self.checkbox_auto.setVisible(True)
 
         self.button_add = QPushButton("Добавить слой", self)
         self.button_add.setGeometry(10, 210, 210, 30)
         self.button_add.clicked.connect(self.add_rectangle)
 
-        self.button_next = QPushButton("Следующее разбиение", self)
-        self.button_next.setGeometry(10, 250, 210, 30)
-        self.button_next.clicked.connect(self.next_partition)
-        self.button_next.setVisible(True)
+        # self.button_next = QPushButton("Следующее разбиение", self)
+        # self.button_next.setGeometry(10, 250, 210, 30)
+        # self.button_next.clicked.connect(self.next_partition)
+        # self.button_next.setVisible(True)
 
         self.button_auto_part = QPushButton("Автоматическое разбиение", self)
         self.button_auto_part.setGeometry(10, 250, 210, 30)
         self.button_auto_part.clicked.connect(self.auto_part)
-        self.button_auto_part.setVisible(False)
+        #self.button_auto_part.setVisible(False)
 
         self.button_undo = QPushButton("Отмена", self)
         self.button_undo.setGeometry(10, 290, 210, 30)
@@ -91,33 +91,33 @@ class MainWindow(QMainWindow):
         self.button_edit_grid = QPushButton("Подготовка к редактированию", self)
         self.button_edit_grid.setGeometry(10, 210, 210, 30)
         self.button_edit_grid.clicked.connect(self.create_grid)
-        self.button_edit_grid.setVisible(False)
+        #self.button_edit_grid.setVisible(False)
 
-        self.button_save = QPushButton("Сохранить разбиения", self)
-        self.button_save.setGeometry(10, 330, 210, 30)
-        self.button_save.clicked.connect(self.save_partitions)
-        self.button_save.setEnabled(False)
-        self.button_save.setVisible(True)
+        # self.button_save = QPushButton("Сохранить разбиения", self)
+        # self.button_save.setGeometry(10, 330, 210, 30)
+        # self.button_save.clicked.connect(self.save_partitions)
+        # self.button_save.setEnabled(False)
+        # self.button_save.setVisible(True)
 
         self.button_save_1 = QPushButton("Сохранить", self)
         self.button_save_1.setGeometry(10, 330, 210, 30)
         self.button_save_1.clicked.connect(self.save_grid_information)
-        self.button_save_1.setVisible(False)
+        #self.button_save_1.setVisible(False)
 
         self.radio_vertical = QRadioButton("Вертикальная линия", self)
         self.radio_vertical.setGeometry(10, 370, 150, 40)
         self.radio_vertical.toggled.connect(self.toggle_vertical_line)
-        self.radio_vertical.setVisible(False)
+        #self.radio_vertical.setVisible(False)
 
         self.radio_horizontal = QRadioButton("Горизонтальная линия", self)
         self.radio_horizontal.setGeometry(10, 410, 150, 40)
         self.radio_horizontal.toggled.connect(self.toggle_horizontal_line)
-        self.radio_horizontal.setVisible(False)
+        #self.radio_horizontal.setVisible(False)
 
         self.radio_edit = QRadioButton("Режим редактирования сетки", self)
         self.radio_edit.setGeometry(10, 410, 150, 40)
         self.radio_edit.toggled.connect(self.toggle_edit)
-        self.radio_edit.setVisible(False)
+        #self.radio_edit.setVisible(False)
 
         # слои
         self.combobox_layer = QComboBox()
@@ -127,26 +127,26 @@ class MainWindow(QMainWindow):
         # self.label_krep.setGeometry(10, 130, 100, 30)
         self.combobox_krep = QComboBox()
         self.combobox_krep.addItems(name_krep)
-        self.label_krep.setVisible(False)
-        self.combobox_krep.setVisible(False)
+        #self.label_krep.setVisible(False)
+       # self.combobox_krep.setVisible(False)
 
         self.button_add_krep = QPushButton("Добавить крепи автоматически", self)
         self.button_add_krep.setGeometry(10, 330, 210, 30)
         self.button_add_krep.clicked.connect(self.add_krep)
-        self.button_add_krep.setVisible(False)
+        #self.button_add_krep.setVisible(False)
 
         self.radio_krep = QRadioButton("Добавить крепи", self)
         self.radio_krep.setGeometry(10, 370, 150, 40)
         self.radio_krep.toggled.connect(self.toggle_krep)
-        self.radio_vertical.setVisible(False)
-        self.radio_krep.setVisible(False)
+        #self.radio_vertical.setVisible(False)
+        #self.radio_krep.setVisible(False)
 
         self.label_width_krep = QLabel("Расстояние между крепями:", self)
         self.label_width_krep.setGeometry(10, 90, 150, 30)
         self.line_edit_width_krep = QLineEdit(self)
         self.line_edit_width_krep.setGeometry(30, 90, 30, 30)
-        self.line_edit_width_krep.setVisible(False)
-        self.label_width_krep.setVisible(False)
+        #self.line_edit_width_krep.setVisible(False)
+        #self.label_width_krep.setVisible(False)
 
         self.label_coordinate = QLabel("Координаты:", self)
 
@@ -165,27 +165,27 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout()
         krepi_layout = QHBoxLayout()
 
-        top_panel_layout.addWidget(self.checkbox_net)
+        #top_panel_layout.addWidget(self.checkbox_net)
         top_panel_layout.addWidget(self.combobox_layer)
         top_panel_layout.addWidget(self.label_thickness)
         top_panel_layout.addWidget(self.line_edit_thickness)
-        top_panel_layout.addWidget(self.label_width)
-        top_panel_layout.addWidget(self.line_edit_width)
+        #top_panel_layout.addWidget(self.label_width)
+        #top_panel_layout.addWidget(self.line_edit_width)
         top_panel_layout.addWidget(self.label_part)
         top_panel_layout.addWidget(self.line_edit_part)
         top_panel_layout.addWidget(self.label_density)
         # layout.addWidget(self.line_edit_density)
         graph_panel_layout.addWidget(self.label_coordinate)
-        graph_panel_layout.addWidget(self.checkbox_auto)
+        #graph_panel_layout.addWidget(self.checkbox_auto)
         graph_panel_layout.addWidget(self.radio_vertical)
         graph_panel_layout.addWidget(self.radio_horizontal)
         graph_panel_layout.addWidget(self.radio_edit)
         top_panel_layout.addWidget(self.button_add)
-        top_panel_layout.addWidget(self.button_next)
+        #top_panel_layout.addWidget(self.button_next)
         graph_panel_layout.addWidget(self.button_auto_part)
         top_panel_layout.addWidget(self.button_undo)
         graph_panel_layout.addWidget(self.button_edit_grid)
-        top_panel_layout.addWidget(self.button_save)
+        #top_panel_layout.addWidget(self.button_save)
         top_panel_layout.addWidget(self.button_save_1)
         krepi_layout.addWidget(self.label_krep)
         krepi_layout.addWidget(self.combobox_krep)
@@ -431,7 +431,7 @@ class MainWindow(QMainWindow):
                 point8_x = (doc['Точка н.п.у.2'])[0]
                 point8_y = (doc['Точка н.п.у.2'])[1]
 
-            layer = self.info_layers[len(self.info_layers)-1]
+            layer = self.info_layers[0]
 
             img = Image.open(io.BytesIO(image_data))
             img = img.convert('RGBA')
@@ -444,30 +444,28 @@ class MainWindow(QMainWindow):
 
             point1_x += x1
             point1_y += y1_edit
-            self.axes.scatter(point1_x, point1_y, color='red')
             point2_x += x1
             point2_y += y1_edit
-            self.axes.scatter(point2_x, point2_y, color='red')
             point3_x += x1
             point3_y += y1_edit
-            self.axes.scatter(point3_x, point3_y, color='red')
             point4_x += x1
             point4_y += y1_edit
-            self.axes.scatter(point4_x, point4_y, color='red')
             point5_x += x1
             point5_y += y1
-            self.axes.scatter(point5_x, point5_y, color='red')
             point6_x += x1
             point6_y += y1
-            self.axes.scatter(point6_x, point6_y, color='red')
             point7_x += x1
             point7_y += y1
-            self.axes.scatter(point7_x, point7_y, color='red')
             point8_x += x1
             point8_y += y1
-            self.axes.scatter(point8_x, point8_y, color='red')
 
             coordinate_info = {
+                'название':str(self.combobox_krep.currentText()),
+                'x1':x1,
+                'x':x,
+                'y1':y1,
+                'y':y,
+                'image':img,
                 'point1_x': point1_x,
                 'point1_y': point1_y,
                 'point2_x': point2_x,
@@ -487,7 +485,11 @@ class MainWindow(QMainWindow):
             }
             self.info_krep.append(coordinate_info)
             self.axes.imshow(img, extent=([x1, x, y1, y]), aspect='equal', zorder=10)
-
+            x_min, x_max = self.current_x_lim
+            y_min, y_max = self.current_y_lim
+            self.axes.set_xlim([x_min, x_max])
+            self.axes.set_ylim(
+                [y_min, y_max+(x_max/10)])
             self.canvas.draw()
 
         else:
@@ -720,35 +722,9 @@ class MainWindow(QMainWindow):
     def toggle_edit(self, checked):
         return
 
-    def toggle_net(self, state):
-        self.net_enabled = state == Qt.Checked
-        self.button_undo.setVisible(self.net_enabled)
-        self.button_next.setVisible(self.net_enabled)
-        self.button_save.setVisible(self.net_enabled)
-        self.checkbox_auto.setVisible(self.net_enabled)
-        self.label_width.setVisible(self.net_enabled)
-        self.radio_horizontal.setVisible(self.net_enabled)
-        self.button_save_1.setVisible(self.net_enabled)
-        self.radio_vertical.setVisible(self.net_enabled)
-        self.line_edit_width.setVisible(self.net_enabled)
-        self.button_auto_part.setVisible(self.net_enabled)
-        self.button_edit_grid.setVisible(self.net_enabled)
-        self.radio_edit.setVisible(self.net_enabled)
-        self.button_add_krep.setVisible(self.net_enabled)
-        self.radio_vertical.setVisible(self.net_enabled)
-        self.line_edit_width_krep.setVisible(self.net_enabled)
-        self.label_width_krep.setVisible(self.net_enabled)
-        self.radio_krep.setVisible(self.net_enabled)
-        self.combobox_krep.setVisible(self.net_enabled)
-        self.button_next.setVisible(not self.net_enabled)
-        self.button_save.setVisible(not self.net_enabled)
-        self.checkbox_auto.setVisible(not self.net_enabled)
-        self.label_width.setVisible(not self.net_enabled)
-        self.line_edit_width.setVisible(not self.net_enabled)
-
     def add_krep(self):
         self.line_edit_part.setReadOnly(True)
-        if self.net_enabled:
+        if self.info_layers:
             all_width = float(self.line_edit_part.text())
             distance = float(self.line_edit_width_krep.text())
             coordinate_x1_distance = 0
@@ -777,7 +753,7 @@ class MainWindow(QMainWindow):
                     point8_x = (doc['Точка н.п.у.2'])[0]
                     point8_y = (doc['Точка н.п.у.2'])[1]
 
-                layer = self.info_layers[len(self.info_layers) - 1]
+                layer = self.info_layers[0]
 
                 img = Image.open(io.BytesIO(image_data))
                 img = img.convert('RGBA')
@@ -806,6 +782,12 @@ class MainWindow(QMainWindow):
                 point8_y += y1
 
                 coordinate_info = {
+                    'название': str(self.combobox_krep.currentText()),
+                    'x1': x1,
+                    'x': x,
+                    'y1': y1,
+                    'y': y,
+                    'image': img,
                     'point1_x': point1_x,
                     'point1_y': point1_y,
                     'point2_x': point2_x,
@@ -829,139 +811,91 @@ class MainWindow(QMainWindow):
                 y_min, y_max = self.current_y_lim
                 self.axes.set_xlim([x_min, x_max])
                 self.axes.set_ylim(
-                    [y_min, y_max])
-                self.canvas.draw()
+                    [y_min*(x_max/2), y_max*(x_max/2)])
                 coordinate_x1_distance += distance + long
+            self.canvas.draw()
+        else:
+            msg = QMessageBox()
+            msg.setWindowTitle("Ошибка")
+            msg.setText("Возникли проблемы со слоями!")
+            msg.setIcon(QMessageBox.Warning)
+            msg.exec_()
+            return
 
     def add_rectangle(self):
-        self.line_edit_part.setReadOnly(True)
-        if self.net_enabled:
+        rect_name = self.combobox_layer.currentText()
 
-            rect_name = self.combobox_layer.currentText()
-
-            self.horizontal_lines = []
-            self.vertical_lines = []
-            self.triangle_coordinates = []
-            self.first_line_horizontal_check = True
-            self.first_line_vertical_check = True
-            if (self.line_edit_thickness.text()).isdigit():
-                height = float(self.line_edit_thickness.text())
-            else:
-                msg = QMessageBox()
-                msg.setWindowTitle("Ошибка")
-                msg.setText("1 Некорректное значение")
-                msg.setIcon(QMessageBox.Warning)
-                msg.exec_()
-                return
-            if (self.line_edit_part.text()).isdigit():
-                width = float(self.line_edit_part.text())
-            else:
-                msg = QMessageBox()
-                msg.setWindowTitle("Ошибка")
-                msg.setText("2 Некорректное значение")
-                msg.setIcon(QMessageBox.Warning)
-                msg.exec_()
-                return
-            rr = self.combobox_layer.currentText()
-            result = collection_density.find({'Породы': str(self.combobox_layer.currentText())})
-            rect_color = None
-            density = None
-            for doc in result:
-                density = doc['Плотность']
-                rect_color = doc['Цвет']
-            self.label_density.setText(f'Плотность: {density}')
-
-            if self.check_first != 0:
-                x = 0
-                y = self.final_Y
-                self.final_Y = y + height
-            if self.check_first == 0:
-                x = 0
-                y = 0 - height
-                self.check_first += 1
-                self.first_coordinate_line_y = y
-
-            rect = patches.Rectangle((x, y), width, height, facecolor=rect_color)
-            rect.set_label(rect_name)
-            self.rectangles.append(rect)
-            self.draw_rectangles()
-
-            # Блокировка изменения ширины после добавления первого слоя
-            if not self.is_width_locked:
-                self.line_edit_width.setReadOnly(True)
-                self.is_width_locked = True
-
-            if float(self.line_edit_part.text()) == 1:
-                self.button_save.setEnabled(True)
-
-            # Добавление информации о слое в текущее разбиение
-            current_partition = {
-                'name': rect_name,
-                'density': density,
-                'thickness': height,
-                'color': rect_color
-            }
-            self.current_partitions.append(current_partition)
-            layer_info = {
-                'name': rect_name,
-                'x0': x,
-                'y0': y,
-                'x1': x + width,
-                'y1': y + height,
-                'color': rect_color
-            }
-            self.info_layers.append(layer_info)
+        self.info_krep = []
+        self.horizontal_lines = []
+        self.vertical_lines = []
+        self.triangle_coordinates = []
+        self.first_line_horizontal_check = True
+        self.first_line_vertical_check = True
+        self.current_x_lim = [self.axes.get_xlim()[0] * 0.9, self.axes.get_xlim()[1] * 0.9]
+        self.current_y_lim = [self.axes.get_ylim()[0] * 0.9, self.axes.get_ylim()[1] * 0.9]
+        if (self.line_edit_thickness.text()).isdigit():
+            height = float(self.line_edit_thickness.text())
         else:
-            if (self.line_edit_thickness.text()).isdigit():
-                height = float(self.line_edit_thickness.text())
-            else:
-                msg = QMessageBox()
-                msg.setWindowTitle("Ошибка")
-                msg.setText("Некорректное значение")
-                msg.setIcon(QMessageBox.Warning)
-                msg.exec_()
-                return
-            if (self.line_edit_width.text()).isdigit():
-                width = float(self.line_edit_width.text())
-            else:
-                msg = QMessageBox()
-                msg.setWindowTitle("Ошибка")
-                msg.setText("Некорректное значение")
-                msg.setIcon(QMessageBox.Warning)
-                msg.exec_()
-                return
-            if (self.line_edit_part.text()).isdigit():
-                part = float(self.line_edit_part.text())
-            else:
-                msg = QMessageBox()
-                msg.setWindowTitle("Ошибка")
-                msg.setText("Некорректное значение")
-                msg.setIcon(QMessageBox.Warning)
-                msg.exec_()
-                return
+            msg = QMessageBox()
+            msg.setWindowTitle("Ошибка")
+            msg.setText("1 Некорректное значение")
+            msg.setIcon(QMessageBox.Warning)
+            msg.exec_()
+            return
+        if (self.line_edit_part.text()).isdigit():
+            width = float(self.line_edit_part.text())
+            self.line_edit_part.setReadOnly(True)
+        else:
+            msg = QMessageBox()
+            msg.setWindowTitle("Ошибка")
+            msg.setText("2 Некорректное значение")
+            msg.setIcon(QMessageBox.Warning)
+            msg.exec_()
+            return
+        rr = self.combobox_layer.currentText()
+        result = collection_density.find({'Породы': str(self.combobox_layer.currentText())})
+        rect_color = None
+        density = None
+        for doc in result:
+            density = doc['Плотность']
+            rect_color = doc['Цвет']
+        self.label_density.setText(f'Плотность: {density}')
 
-            color_dialog = QColorDialog()
-            color = color_dialog.getColor()
-            if color.isValid():
-                rect_color = color.name()
-            else:
-                return
+        if self.check_first != 0:
+            x = 0
+            y = self.final_Y
+            self.final_Y = y + height
+        if self.check_first == 0:
+            x = 0
+            y = 0 - height
+            self.check_first += 1
+            self.first_coordinate_line_y = y
 
-            rect_name = self.combobox_layer.currentText()
+        rect = patches.Rectangle((x, y), width, height, facecolor=rect_color)
+        rect.set_label(rect_name)
+        self.rectangles.append(rect)
+        self.draw_rectangles()
 
-            if self.check_first != 0:
-                x = 0
-                y = self.final_Y
-                self.final_Y = y + height
-            if self.check_first == 0:
-                x = 0
-                y = 0 - height
-                self.check_first += 1
+        if float(self.line_edit_part.text()) == 1:
+            self.button_save.setEnabled(True)
 
-            rect = patches.Rectangle((x, y), width, height, facecolor=rect_color)
-            rect.set_label(rect_name)
-            self.rectangles.append(rect)
-            self.draw_rectangles()
+        # Добавление информации о слое в текущее разбиение
+        current_partition = {
+            'name': rect_name,
+            'density': density,
+            'thickness': height,
+            'color': rect_color
+        }
+        self.current_partitions.append(current_partition)
+        layer_info = {
+            'name': rect_name,
+            'x0': x,
+            'y0': y,
+            'x1': x + width,
+            'y1': y + height,
+            'color': rect_color
+        }
+        self.info_layers.append(layer_info)
 
     def next_partition(self):
         if (self.line_edit_part.text()).isdigit():
@@ -986,6 +920,7 @@ class MainWindow(QMainWindow):
 
     def undo_action(self):
         if self.rectangles:
+            self.info_krep = []
             self.rectangles.pop()
             self.draw_rectangles()
             self.final_Y = self.final_Y - float(self.line_edit_thickness.text())
@@ -997,8 +932,10 @@ class MainWindow(QMainWindow):
             self.first_line_vertical_check = True
 
     def draw_rectangles(self):
-        if self.net_enabled and self.radio_edit.isChecked():
+        if self.radio_edit.isChecked():
             self.axes.clear()
+            for index, info_krep in enumerate(self.info_krep):
+                self.axes.imshow(info_krep['image'], extent=([info_krep['x1'], info_krep['x'], info_krep['y1'], info_krep['y']]), aspect='equal', zorder=10)
             for rect in self.rectangles:
                 self.axes.add_patch(rect)
                 self.axes.annotate(rect.get_label(),
@@ -1011,7 +948,7 @@ class MainWindow(QMainWindow):
                 [y_min, y_max])
             # self.axes.autoscale(enable=False, axis='both')
             self.canvas.draw()
-        if self.net_enabled and self.radio_edit.isChecked() == False:
+        if not self.radio_edit.isChecked():
             self.axes.clear()
             for rect in self.rectangles:
                 self.axes.add_patch(rect)
@@ -1025,17 +962,7 @@ class MainWindow(QMainWindow):
             self.axes.set_ylim(
                 [0 - float(self.line_edit_thickness.text()) * 2, self.final_Y + float(self.line_edit_thickness.text())])
             self.canvas.draw()
-        if not self.net_enabled:
-            self.axes.clear()
-            for rect in self.rectangles:
-                self.axes.add_patch(rect)
-                self.axes.annotate(rect.get_label(),
-                                   (rect.get_x() + rect.get_width() / 2, rect.get_y() + rect.get_height() / 2),
-                                   ha='center', va='center')
-            self.axes.set_xlim([0, float(self.line_edit_width.text())])
-            self.axes.set_ylim(
-                [0 - float(self.line_edit_thickness.text()) * 2, self.final_Y + float(self.line_edit_thickness.text())])
-            self.canvas.draw()
+
 
     def save_partitions(self):
         if self.save_current_partition():
@@ -1129,6 +1056,9 @@ class MainWindow(QMainWindow):
 
             # self.canvas.draw()
             self.draw_rectangles()
+            for index, info_krep in enumerate(self.info_krep):
+                self.axes.imshow(info_krep['image'], extent=([info_krep['x1'], info_krep['x'], info_krep['y1'], info_krep['y']]), aspect='equal', zorder=10)
+
             for index, triangle in enumerate(self.triangle_coordinates):
                 x0 = float(triangle['x0'])
                 x1 = float(triangle['x1'])
