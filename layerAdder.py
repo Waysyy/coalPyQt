@@ -1,4 +1,5 @@
 import sys
+import threading
 from tkinter import Tk, filedialog
 import io
 from PIL import Image
@@ -8,7 +9,8 @@ import numpy as np
 import pandas as pd
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget, \
-    QColorDialog, QInputDialog, QCheckBox, QFileDialog, QMessageBox, QRadioButton, QComboBox, QHBoxLayout
+    QColorDialog, QInputDialog, QCheckBox, QFileDialog, QMessageBox, QRadioButton, QComboBox, QHBoxLayout, \
+    QProgressDialog
 from PyQt5.QtCore import Qt
 from matplotlib.backend_bases import MouseButton
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -79,15 +81,34 @@ class MainWindow(QMainWindow):
         # self.button_next.clicked.connect(self.next_partition)
         # self.button_next.setVisible(True)
 
+        # self.progress_dialog = QProgressDialog()
+        # self.progress_dialog.setLabelText("Progress")
+        # self.progress_dialog.setCancelButtonText("Cancel")
+        # self.progress_dialog.setMinimumDuration(0)
+        # self.progress_dialog.setWindowModality(Qt.WindowModal)
+        # self.progress_dialog.setAutoReset(False)
+
+        # self.total_iterations = 0
+        # # Установите максимальное значение прогресс-бара
+        # self.progress_dialog.setMaximum(self.total_iterations)
+        #
+        # # Показать прогресс-диалог только при необходимости
+        # if self.total_iterations > 0:
+        #     self.progress_dialog.show()
+
+        # Установите максимальное значение прогресс-бара
+
+
         self.button_auto_part = QPushButton("Автоматическое разбиение", self)
         self.button_auto_part.setGeometry(10, 250, 210, 30)
-        self.button_auto_part.clicked.connect(self.auto_part)
+        self.button_auto_part.clicked.connect(self.thread_auto_part)
         #self.button_auto_part.setVisible(False)
 
         self.button_undo = QPushButton("Отмена", self)
         self.button_undo.setGeometry(10, 290, 210, 30)
         self.button_undo.clicked.connect(self.undo_action)
 
+        thread_create_grid = threading.Thread(target=self.create_grid)
         self.button_edit_grid = QPushButton("Подготовка к редактированию", self)
         self.button_edit_grid.setGeometry(10, 210, 210, 30)
         self.button_edit_grid.clicked.connect(self.create_grid)
@@ -154,6 +175,8 @@ class MainWindow(QMainWindow):
         self.figure = Figure(figsize=(8, 6))
         self.canvas = FigureCanvas(self.figure)
         self.axes = self.figure.add_subplot(111)
+        self.figure.set_animated(True)
+        self.background = self.canvas.copy_from_bbox(self.axes.bbox)
 
         # список для хранения слоев
         self.rectangles = []
@@ -253,11 +276,31 @@ class MainWindow(QMainWindow):
         self.current_y_lim = None
 
         self.krep_coordinate = []
+        self.index_edit_triangle = []
+
+
+
+    def thread_auto_part(self):
+        # Создаем объект Thread и передаем целевой метод
+        thread_auto_part = threading.Thread(target=self.auto_part)
+
+        # Запускаем поток
+        thread_auto_part.start()
+
+        # Ждем, пока поток завершится (опционально)
+        thread_auto_part.join()
+
+    def wait(self):
+        msg_wait = QMessageBox()
+        msg_wait.setText("Выполнение")
+        # msg.setIcon(QMessageBox.Warning)
+        #msg_wait.exec_()
 
     def auto_part(self):
         if self.info_layers:
             if (self.line_edit_part.text()).isdigit():
                 height = int(self.line_edit_part.text())
+
             else:
                 msg = QMessageBox()
                 msg.setWindowTitle("Ошибка")
@@ -269,6 +312,7 @@ class MainWindow(QMainWindow):
             ylim = height_sum
             x = 0
             y = self.first_coordinate_line_y
+            self.total_iterations = int(ylim) + int(height)
             for i in range(int(ylim)):
                 if self.first_line_horizontal_check == True:
                     if self.info_krep:
@@ -327,6 +371,14 @@ class MainWindow(QMainWindow):
                 self.axes.plot([0, height], [y, y], color='red')
                 #self.canvas.draw()
                 y += 1
+                # self.progress_dialog.setValue(i)  # Установите текущее значение прогресс-бара
+                # app.processEvents()  # Обновление интерфейса
+                #
+                # if self.progress_dialog.wasCanceled():
+                #     # Действие при отмене
+                #     break
+
+
 
             for i in range(height):
                 if self.first_line_vertical_check == True:
@@ -379,7 +431,15 @@ class MainWindow(QMainWindow):
                 self.axes.plot([x, x], [self.first_coordinate_line_y, self.first_coordinate_line_y + ylim],
                                color='blue')
                 x += 1
+            #     self.progress_dialog.setValue(i)  # Установите текущее значение прогресс-бара
+            #     app.processEvents()  # Обновление интерфейса
+            #
+            #     if self.progress_dialog.wasCanceled():
+            #         # Действие при отмене
+            #         break
+            # self.progress_dialog.close()
             self.canvas.draw()
+
         else:
             msg = QMessageBox()
             msg.setWindowTitle("Ошибка")
@@ -395,6 +455,7 @@ class MainWindow(QMainWindow):
         if self.radio_edit.isChecked() and event.button == MouseButton.LEFT:
             x = round(event.xdata, 1)
             y = round(event.ydata, 1)
+            self.index_edit_triangle = []
             for index, coordinate in enumerate(self.triangle_coordinates):
                 x0 = round(coordinate['x0'], 1)
                 x1 = round(coordinate['x1'], 1)
@@ -406,6 +467,7 @@ class MainWindow(QMainWindow):
                     self.dragging = True
                     self.x_grid_edit = x
                     self.y_grid_edit = y
+                    self.index_edit_triangle.append(index)
         if self.radio_krep.isChecked() and self.rectangles and event.button == MouseButton.LEFT:
             result = collection_krepi.find({'Название': str(self.combobox_krep.currentText())})
             image_data = None
@@ -644,6 +706,12 @@ class MainWindow(QMainWindow):
             self.current_y_lim = [self.axes.get_ylim()[0] * 1.1, self.axes.get_ylim()[1] * 1.1]
             self.axes.set_xlim(self.axes.get_xlim()[0] * 1.1, self.axes.get_xlim()[1] * 1.1)
             self.axes.set_ylim(self.axes.get_ylim()[0] * 1.1, self.axes.get_ylim()[1] * 1.1)
+
+        # Restore the cached background
+        self.canvas.restore_region(self.background)
+
+        # Redraw the updated canvas
+        self.canvas.blit(self.axes.bbox)
         self.canvas.draw()
 
     def on_motion_notify(self, event):
@@ -666,7 +734,8 @@ class MainWindow(QMainWindow):
             x_grid_edit = self.x_grid_edit
             y_grid_edit = self.y_grid_edit
 
-            for triangle in self.triangle_coordinates:
+            for index in self.index_edit_triangle:
+                triangle = self.triangle_coordinates[index]
                 x0 = round(triangle['x0'], 1)
                 x1 = round(triangle['x1'], 1)
                 x2 = round(triangle['x2'], 1)
@@ -690,16 +759,17 @@ class MainWindow(QMainWindow):
                     triangle['x2'] = x
                     self.y_grid_edit = y
                     self.x_grid_edit = x
-                # if x > self.axes.get_xlim[0]:
-            # self.axes.relim()  # Обновление пределов осей на основе новых данных
-            # self.axes.autoscale_view()  # Автоматическое масштабирование графика
-            self.draw_rectangles()
 
-            for triangle in self.triangle_coordinates:
+            for index in self.index_edit_triangle:
+                triangle = self.triangle_coordinates[index]
                 x = [triangle['x0'], triangle['x1'], triangle['x2']]
                 y = [triangle['y0'], triangle['y1'], triangle['y2']]
-                self.axes.plot(x + [x[0]], y + [y[0]], color='red')
+                line = self.axes.lines[index]
+                line.set_data(x + [x[0]], y + [y[0]])
 
+                # Перерисовать только измененную линию или точку
+                self.axes.draw_artist(line)
+            self.canvas.blit(self.axes.bbox)
             self.canvas.draw()
 
     def on_mouse_release(self, event):
@@ -1068,22 +1138,17 @@ class MainWindow(QMainWindow):
             self.triangle_coordinates.append(triangle_info)
         self.draw_rectangles()
         # self.canvas.draw()
-        if self.info_krep:
-            for index, info_krep in enumerate(self.info_krep):
-                self.axes.imshow(info_krep['image'],
-                                 extent=([info_krep['x1'], info_krep['x'], info_krep['y1'], info_krep['y']]),
-                                 aspect='equal', zorder=10)
+        info_krep_images = []
+        for index, info_krep in enumerate(self.info_krep):
+            info_krep_images.append(info_krep['image'])
+            self.axes.imshow(info_krep['image'],
+                             extent=([info_krep['x1'], info_krep['x'], info_krep['y1'], info_krep['y']]),
+                             aspect='equal', zorder=10)
 
         for index, triangle in enumerate(self.triangle_coordinates):
-            x0 = float(triangle['x0'])
-            x1 = float(triangle['x1'])
-            x2 = float(triangle['x2'])
-            y0 = float(triangle['y0'])
-            y1 = float(triangle['y1'])
-            y2 = float(triangle['y2'])
-            x = [x0, x1, x2]
-            y = [y0, y1, y2]
-            self.axes.plot(x + [x[0]], y + [y[0]], color='red', zorder=11)
+            x_coords = [triangle['x0'], triangle['x1'], triangle['x2']]
+            y_coords = [triangle['y0'], triangle['y1'], triangle['y2']]
+            self.axes.plot(x_coords + [x_coords[0]], y_coords + [y_coords[0]], color='red', zorder=11)
 
         self.figure.tight_layout()
         self.axes.set_aspect('auto')
