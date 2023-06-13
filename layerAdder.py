@@ -74,7 +74,7 @@ class MainWindow(QMainWindow):
 
         self.button_add = QPushButton("Добавить слой", self)
         self.button_add.setGeometry(10, 210, 210, 30)
-        self.button_add.clicked.connect(self.add_rectangle)
+        self.button_add.clicked.connect(self.add_layer)
 
         # self.button_next = QPushButton("Следующее разбиение", self)
         # self.button_next.setGeometry(10, 250, 210, 30)
@@ -937,7 +937,7 @@ class MainWindow(QMainWindow):
             msg.exec_()
             return
 
-    def add_rectangle(self):
+    def add_layer(self):
         rect_name = self.combobox_layer.currentText()
 
         self.info_krep = []
