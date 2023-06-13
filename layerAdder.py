@@ -119,10 +119,13 @@ class MainWindow(QMainWindow):
         # self.button_save.clicked.connect(self.save_partitions)
         # self.button_save.setEnabled(False)
         # self.button_save.setVisible(True)
-
+        save1 = Save()
+        self.info_layers = []
+        self.triangle_coordinates = []
         self.button_save_1 = QPushButton("Сохранить", self)
         self.button_save_1.setGeometry(10, 330, 210, 30)
-        self.button_save_1.clicked.connect(self.save_grid_information)
+        self.button_save_1.clicked.connect(lambda: save1.save_grid_information(self.triangle_coordinates, self.info_layers))
+
         #self.button_save_1.setVisible(False)
 
         self.radio_vertical = QRadioButton("Вертикальная линия", self)
@@ -256,12 +259,12 @@ class MainWindow(QMainWindow):
         self.horizontal_lines = []  # Список координат горизонтальных линий
         self.vertical_lines = []  # Список координат вертикальных линий
 
-        self.info_layers = []
+
         self.info_krep = []
 
         self.first_line_horizontal_check = True
         self.first_line_vertical_check = True
-        self.triangle_coordinates = []
+
         self.dragging = False
         self.x_grid_edit = 0
         self.y_grid_edit = 0
@@ -1005,7 +1008,8 @@ class MainWindow(QMainWindow):
             'y0': y,
             'x1': x + width,
             'y1': y + height,
-            'color': rect_color
+            'color': rect_color,
+            'density': density
         }
         self.info_layers.append(layer_info)
 
@@ -1193,8 +1197,61 @@ class MainWindow(QMainWindow):
         self.axes.set_aspect('auto')
         self.canvas.draw()
 
-    def save_grid_information(self):
-        if self.triangle_coordinates:
+
+
+    def save_current_partition(self):
+        if (self.line_edit_part.text()).isdigit():
+            partition_number = int(float(self.line_edit_part.text()))
+            if self.auto_save_enabled:
+                real_row = 1
+                for row in range(partition_number):
+                    for i, partition in enumerate(self.current_partitions):
+
+                        if float(partition['thickness']) > float(self.line_edit_width.text()):
+                            for j in range(round(float(partition['thickness']) / float(self.line_edit_width.text()))):
+                                self.sheet.cell(row=real_row, column=1).value = row + 1
+                                self.sheet.cell(row=real_row, column=2).value = j
+                                self.sheet.cell(row=real_row, column=3).value = partition['name']
+                                self.sheet.cell(row=real_row, column=4).value = partition['density']
+                                self.sheet.cell(row=real_row, column=5).value = str(float(self.line_edit_width.text()))
+                                self.sheet.cell(row=real_row, column=6).value = partition['color']
+                                real_row += 1
+                        else:
+                            self.sheet.cell(row=real_row, column=1).value = row + 1
+                            self.sheet.cell(row=real_row, column=2).value = i
+                            self.sheet.cell(row=real_row, column=3).value = partition['name']
+                            self.sheet.cell(row=real_row, column=4).value = partition['density']
+                            self.sheet.cell(row=real_row, column=5).value = partition['thickness']
+                            self.sheet.cell(row=real_row, column=6).value = partition['color']
+                        real_row += 1
+
+            else:
+                for i, partition in enumerate(self.current_partitions):
+                    row = i + (partition_number - 1) * len(self.current_partitions) + 2
+                    if float(partition['thickness']) > float(self.line_edit_width.text()):
+                        for j in range(round(float(partition['thickness']) / float(self.line_edit_width.text()))):
+                            self.sheet.cell(row=row, column=1).value = partition_number
+                            self.sheet.cell(row=row, column=2).value = j
+                            self.sheet.cell(row=row, column=3).value = partition['name']
+                            self.sheet.cell(row=row, column=4).value = partition['density']
+                            self.sheet.cell(row=row, column=5).value = str(float(self.line_edit_width.text()))
+                            self.sheet.cell(row=row, column=6).value = partition['color']
+                            row += 1
+                    else:
+                        self.sheet.cell(row=row, column=1).value = partition_number
+                        self.sheet.cell(row=row, column=2).value = i
+                        self.sheet.cell(row=row, column=3).value = partition['name']
+                        self.sheet.cell(row=row, column=4).value = partition['density']
+                        self.sheet.cell(row=row, column=5).value = partition['thickness']
+                        self.sheet.cell(row=row, column=6).value = partition['color']
+                self.current_partitions = []
+            return True
+        else:
+            return False
+
+class Save:
+    def save_grid_information(self, triangle_coordinates, info_layers):
+        if triangle_coordinates:
             # self.vertical_lines = sorted(self.vertical_lines, key=lambda line: line['x0'])
             # self.horizontal_lines = sorted(self.horizontal_lines, key=lambda line: line['y0'])
             #
@@ -1265,12 +1322,12 @@ class MainWindow(QMainWindow):
             #             }
             #             cells.append(cell_info)
 
-            for layer in self.info_layers:
+            for layer in info_layers:
                 x0_layer = layer['x0']
                 x1_layer = layer['x1']
                 y0_layer = layer['y0']
                 y1_layer = layer['y1']
-                for index, coordinates in enumerate(self.triangle_coordinates):
+                for index, coordinates in enumerate(triangle_coordinates):
                     if coordinates['x0'] >= x0_layer and coordinates['y0'] >= y0_layer and coordinates[
                         'x1'] <= x1_layer and coordinates['y1'] <= y1_layer \
                             and coordinates['x2'] >= x0_layer and coordinates['x2'] <= x1_layer and coordinates[
@@ -1283,7 +1340,8 @@ class MainWindow(QMainWindow):
                             'x2': coordinates['x2'],
                             'y0': coordinates['y0'],
                             'y1': coordinates['y1'],
-                            'y2': coordinates['y2']
+                            'y2': coordinates['y2'],
+                            'density': layer['density']
 
                         }
                         cells.append(cell_info)
@@ -1291,7 +1349,7 @@ class MainWindow(QMainWindow):
             workbook = openpyxl.Workbook()
             sheet = workbook.active
 
-            headers = ['Name', 'Color', 'x0', 'x1', 'x2', 'y0', 'y1', 'y2']
+            headers = ['Name', 'Color', 'x0', 'x1', 'x2', 'y0', 'y1', 'y2','density']
 
             for col, header in enumerate(headers, start=1):
                 sheet.cell(row=1, column=col).value = header
@@ -1305,6 +1363,7 @@ class MainWindow(QMainWindow):
                 sheet.cell(row=index, column=6).value = cell_info['y0']
                 sheet.cell(row=index, column=7).value = cell_info['y1']
                 sheet.cell(row=index, column=8).value = cell_info['y2']
+                sheet.cell(row=index, column=9).value = cell_info['density']
 
             root = Tk()
             root.withdraw()
@@ -1324,57 +1383,6 @@ class MainWindow(QMainWindow):
             msg.setText("кажется нечего сохранять!")
             msg.setIcon(QMessageBox.Warning)
             msg.exec_()
-
-    def save_current_partition(self):
-        if (self.line_edit_part.text()).isdigit():
-            partition_number = int(float(self.line_edit_part.text()))
-            if self.auto_save_enabled:
-                real_row = 1
-                for row in range(partition_number):
-                    for i, partition in enumerate(self.current_partitions):
-
-                        if float(partition['thickness']) > float(self.line_edit_width.text()):
-                            for j in range(round(float(partition['thickness']) / float(self.line_edit_width.text()))):
-                                self.sheet.cell(row=real_row, column=1).value = row + 1
-                                self.sheet.cell(row=real_row, column=2).value = j
-                                self.sheet.cell(row=real_row, column=3).value = partition['name']
-                                self.sheet.cell(row=real_row, column=4).value = partition['density']
-                                self.sheet.cell(row=real_row, column=5).value = str(float(self.line_edit_width.text()))
-                                self.sheet.cell(row=real_row, column=6).value = partition['color']
-                                real_row += 1
-                        else:
-                            self.sheet.cell(row=real_row, column=1).value = row + 1
-                            self.sheet.cell(row=real_row, column=2).value = i
-                            self.sheet.cell(row=real_row, column=3).value = partition['name']
-                            self.sheet.cell(row=real_row, column=4).value = partition['density']
-                            self.sheet.cell(row=real_row, column=5).value = partition['thickness']
-                            self.sheet.cell(row=real_row, column=6).value = partition['color']
-                        real_row += 1
-
-            else:
-                for i, partition in enumerate(self.current_partitions):
-                    row = i + (partition_number - 1) * len(self.current_partitions) + 2
-                    if float(partition['thickness']) > float(self.line_edit_width.text()):
-                        for j in range(round(float(partition['thickness']) / float(self.line_edit_width.text()))):
-                            self.sheet.cell(row=row, column=1).value = partition_number
-                            self.sheet.cell(row=row, column=2).value = j
-                            self.sheet.cell(row=row, column=3).value = partition['name']
-                            self.sheet.cell(row=row, column=4).value = partition['density']
-                            self.sheet.cell(row=row, column=5).value = str(float(self.line_edit_width.text()))
-                            self.sheet.cell(row=row, column=6).value = partition['color']
-                            row += 1
-                    else:
-                        self.sheet.cell(row=row, column=1).value = partition_number
-                        self.sheet.cell(row=row, column=2).value = i
-                        self.sheet.cell(row=row, column=3).value = partition['name']
-                        self.sheet.cell(row=row, column=4).value = partition['density']
-                        self.sheet.cell(row=row, column=5).value = partition['thickness']
-                        self.sheet.cell(row=row, column=6).value = partition['color']
-                self.current_partitions = []
-            return True
-        else:
-            return False
-
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
