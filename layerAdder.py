@@ -101,7 +101,7 @@ class MainWindow(QMainWindow):
 
         self.button_auto_part = QPushButton("Автоматическое разбиение", self)
         self.button_auto_part.setGeometry(10, 250, 210, 30)
-        self.button_auto_part.clicked.connect(self.thread_auto_part)
+        self.button_auto_part.clicked.connect(self.auto_part)
         #self.button_auto_part.setVisible(False)
 
         self.button_undo = QPushButton("Отмена", self)
@@ -308,137 +308,144 @@ class MainWindow(QMainWindow):
                 msg.setIcon(QMessageBox.Warning)
                 msg.exec_()
                 return
-            height_sum = sum(partition['thickness'] for partition in self.current_partitions)
-            ylim = height_sum
-            x = 0
-            y = self.first_coordinate_line_y
-            self.total_iterations = int(ylim) + int(height)
-            for i in range(int(ylim)):
-                if self.first_line_horizontal_check == True:
-                    if self.info_krep:
-                        info_krep = self.info_krep[0]
+            distance, ok = QInputDialog.getDouble(self, "Расстояние разбиения", "Расстояние:")
+            if not ok:
+                return
+            full_height = abs(self.info_layers[0]['y0']) + abs(self.info_layers[len(self.info_layers) - 1]['y1'])
+            full_width = abs(self.info_layers[0]['x0']) + abs(self.info_layers[len(self.info_layers) - 1]['x1'])
+            if ok:
+                height_sum = sum(partition['thickness'] for partition in self.current_partitions)
+                ylim = height_sum
+                x = 0
+                y = self.first_coordinate_line_y
+                self.total_iterations = int(ylim) + int(height)
+                for i in range(int(ylim)):
+                    if self.first_line_horizontal_check == True:
+                        if self.info_krep:
+                            info_krep = self.info_krep[0]
+                            line_info = {
+                                'x0': 0,
+                                'x1': height,
+                                'y0': info_krep['point8_y'],
+                                'y1': info_krep['point8_y']
+                            }
+                            self.horizontal_lines.append(line_info)
+                            # Рисование линии по всей ширине графика
+                            self.axes.plot([0, height], [info_krep['point8_y'],
+                                                         info_krep['point8_y']], color='red')
+                            line_info = {
+                                'x0': 0,
+                                'x1': height,
+                                'y0': info_krep['point1_y'],
+                                'y1': info_krep['point1_y']
+                            }
+                            self.horizontal_lines.append(line_info)
+                            # Рисование линии по всей ширине графика
+                            self.axes.plot([0, height], [info_krep['point1_y'],
+                                                         info_krep['point1_y']], color='red')
                         line_info = {
                             'x0': 0,
                             'x1': height,
-                            'y0': info_krep['point8_y'],
-                            'y1': info_krep['point8_y']
+                            'y0': self.first_coordinate_line_y,
+                            'y1': self.first_coordinate_line_y
                         }
                         self.horizontal_lines.append(line_info)
                         # Рисование линии по всей ширине графика
-                        self.axes.plot([0, height], [info_krep['point8_y'],
-                                                     info_krep['point8_y']], color='red')
+                        self.axes.plot([0, height], [self.first_coordinate_line_y, self.first_coordinate_line_y],
+                                       color='red')
                         line_info = {
                             'x0': 0,
                             'x1': height,
-                            'y0': info_krep['point1_y'],
-                            'y1': info_krep['point1_y']
+                            'y0': self.first_coordinate_line_y + ylim,
+                            'y1': self.first_coordinate_line_y + ylim
                         }
                         self.horizontal_lines.append(line_info)
                         # Рисование линии по всей ширине графика
-                        self.axes.plot([0, height], [info_krep['point1_y'],
-                                                     info_krep['point1_y']], color='red')
-                    line_info = {
-                        'x0': 0,
-                        'x1': height,
-                        'y0': self.first_coordinate_line_y,
-                        'y1': self.first_coordinate_line_y
-                    }
-                    self.horizontal_lines.append(line_info)
-                    # Рисование линии по всей ширине графика
-                    self.axes.plot([0, height], [self.first_coordinate_line_y, self.first_coordinate_line_y],
-                                   color='red')
-                    line_info = {
-                        'x0': 0,
-                        'x1': height,
-                        'y0': self.first_coordinate_line_y + ylim,
-                        'y1': self.first_coordinate_line_y + ylim
-                    }
-                    self.horizontal_lines.append(line_info)
-                    # Рисование линии по всей ширине графика
-                    self.axes.plot([0, height],
-                                   [self.first_coordinate_line_y + ylim, self.first_coordinate_line_y + ylim],
-                                   color='red')
-                    self.first_line_horizontal_check = False
+                        self.axes.plot([0, height],
+                                       [self.first_coordinate_line_y + ylim, self.first_coordinate_line_y + ylim],
+                                       color='red')
+                        self.first_line_horizontal_check = False
+                    if y + distance <= full_height:
+                        line_info = {
+                            'x0': 0,
+                            'x1': height,
+                            'y0': y,
+                            'y1': y
+                        }
+                        self.horizontal_lines.append(line_info)
+                        # Рисование линии по всей ширине графика
+                        self.axes.plot([0, height], [y, y], color='red')
+                        #self.canvas.draw()
 
-                line_info = {
-                    'x0': 0,
-                    'x1': height,
-                    'y0': y,
-                    'y1': y
-                }
-                self.horizontal_lines.append(line_info)
-                # Рисование линии по всей ширине графика
-                self.axes.plot([0, height], [y, y], color='red')
-                #self.canvas.draw()
-                y += 1
-                # self.progress_dialog.setValue(i)  # Установите текущее значение прогресс-бара
-                # app.processEvents()  # Обновление интерфейса
+                        y += distance
+                    # self.progress_dialog.setValue(i)  # текущее значение прогресс-бара
+                    # app.processEvents()  # Обновление интерфейса
+                    #
+                    # if self.progress_dialog.wasCanceled():
+                    #     # Действие при отмене
+                    #     break
+
+
+
+                for i in range(height):
+                    if self.first_line_vertical_check == True:
+                        if self.info_krep:
+                            for index, info_krep in enumerate(self.info_krep):
+                                for i in range(4):
+                                    key = 'point{}_x'.format(i + 1)
+                                    line_info = {
+                                        'x0': info_krep[key],
+                                        'x1': info_krep[key],
+                                        'y0': self.first_coordinate_line_y,
+                                        'y1': self.first_coordinate_line_y + ylim
+                                    }
+                                    self.vertical_lines.append(line_info)
+                                    # Рисование линии по всей ширине графика
+                                    self.axes.plot([info_krep[key], info_krep[key]],
+                                                   [self.first_coordinate_line_y, self.first_coordinate_line_y + ylim],
+                                                   color='blue')
+                        line_info = {
+                            'x0': 0,
+                            'x1': 0,
+                            'y0': self.first_coordinate_line_y,
+                            'y1': self.first_coordinate_line_y + ylim
+                        }
+                        self.vertical_lines.append(line_info)
+                        # Рисование линии по всей ширине графика
+                        self.axes.plot([0, 0], [self.first_coordinate_line_y, self.first_coordinate_line_y + ylim],
+                                       color='blue')
+                        line_info = {
+                            'x0': height,
+                            'x1': height,
+                            'y0': self.first_coordinate_line_y,
+                            'y1': self.first_coordinate_line_y + ylim
+                        }
+                        self.vertical_lines.append(line_info)
+                        # Рисование линии по всей ширине графика
+                        self.axes.plot([height, height],
+                                       [self.first_coordinate_line_y, self.first_coordinate_line_y + ylim],
+                                       color='blue')
+                        self.first_line_vertical_check = False
+                    if x + distance <= full_width:
+                        line_info = {
+                            'x0': x,
+                            'x1': x,
+                            'y0': self.first_coordinate_line_y,
+                            'y1': self.first_coordinate_line_y + ylim
+                        }
+                        self.vertical_lines.append(line_info)
+                        # Рисование линии по всей ширине графика
+                        self.axes.plot([x, x], [self.first_coordinate_line_y, self.first_coordinate_line_y + ylim],
+                                       color='blue')
+                        x += distance
+                #     self.progress_dialog.setValue(i)  # Установите текущее значение прогресс-бара
+                #     app.processEvents()  # Обновление интерфейса
                 #
-                # if self.progress_dialog.wasCanceled():
-                #     # Действие при отмене
-                #     break
-
-
-
-            for i in range(height):
-                if self.first_line_vertical_check == True:
-                    if self.info_krep:
-                        for index, info_krep in enumerate(self.info_krep):
-                            for i in range(4):
-                                key = 'point{}_x'.format(i + 1)
-                                line_info = {
-                                    'x0': info_krep[key],
-                                    'x1': info_krep[key],
-                                    'y0': self.first_coordinate_line_y,
-                                    'y1': self.first_coordinate_line_y + ylim
-                                }
-                                self.vertical_lines.append(line_info)
-                                # Рисование линии по всей ширине графика
-                                self.axes.plot([info_krep[key], info_krep[key]],
-                                               [self.first_coordinate_line_y, self.first_coordinate_line_y + ylim],
-                                               color='blue')
-                    line_info = {
-                        'x0': 0,
-                        'x1': 0,
-                        'y0': self.first_coordinate_line_y,
-                        'y1': self.first_coordinate_line_y + ylim
-                    }
-                    self.vertical_lines.append(line_info)
-                    # Рисование линии по всей ширине графика
-                    self.axes.plot([0, 0], [self.first_coordinate_line_y, self.first_coordinate_line_y + ylim],
-                                   color='blue')
-                    line_info = {
-                        'x0': height,
-                        'x1': height,
-                        'y0': self.first_coordinate_line_y,
-                        'y1': self.first_coordinate_line_y + ylim
-                    }
-                    self.vertical_lines.append(line_info)
-                    # Рисование линии по всей ширине графика
-                    self.axes.plot([height, height],
-                                   [self.first_coordinate_line_y, self.first_coordinate_line_y + ylim],
-                                   color='blue')
-                    self.first_line_vertical_check = False
-
-                line_info = {
-                    'x0': x,
-                    'x1': x,
-                    'y0': self.first_coordinate_line_y,
-                    'y1': self.first_coordinate_line_y + ylim
-                }
-                self.vertical_lines.append(line_info)
-                # Рисование линии по всей ширине графика
-                self.axes.plot([x, x], [self.first_coordinate_line_y, self.first_coordinate_line_y + ylim],
-                               color='blue')
-                x += 1
-            #     self.progress_dialog.setValue(i)  # Установите текущее значение прогресс-бара
-            #     app.processEvents()  # Обновление интерфейса
-            #
-            #     if self.progress_dialog.wasCanceled():
-            #         # Действие при отмене
-            #         break
-            # self.progress_dialog.close()
-            self.canvas.draw()
+                #     if self.progress_dialog.wasCanceled():
+                #         # Действие при отмене
+                #         break
+                # self.progress_dialog.close()
+                self.canvas.draw()
 
         else:
             msg = QMessageBox()
@@ -456,14 +463,30 @@ class MainWindow(QMainWindow):
             x = round(event.xdata, 1)
             y = round(event.ydata, 1)
             self.index_edit_triangle = []
+            if float(self.line_edit_part.text()) > 500:
+                radius = 0.1
+                x = round(event.xdata, 1)
+                y = round(event.ydata, 1)
+            else:
+                radius = 0.1
+                x = round(event.xdata, 1)
+                y = round(event.ydata, 1)
             for index, coordinate in enumerate(self.triangle_coordinates):
-                x0 = round(coordinate['x0'], 1)
-                x1 = round(coordinate['x1'], 1)
-                x2 = round(coordinate['x2'], 1)
-                y0 = round(coordinate['y0'], 1)
-                y1 = round(coordinate['y1'], 1)
-                y2 = round(coordinate['y2'], 1)
-                if (x == x0 or x == x1 or x == x2 or x == x0+0.1 or x == x1+0.1 or x == x2+0.1 or x == x0-0.1 or x == x1-0.1 or x == x2-0.1) and (y == y0 or y == y1 or y == y2 or y == y0+0.1 or y == y1+0.1 or y == y2+0.1 or y == y0-0.1 or y == y1-0.1 or y == y2-0.1):
+                if float(self.line_edit_part.text()) > 500:
+                    x0 = round(coordinate['x0'],1)
+                    x1 = round(coordinate['x1'],1)
+                    x2 = round(coordinate['x2'],1)
+                    y0 = round(coordinate['y0'],1)
+                    y1 = round(coordinate['y1'],1)
+                    y2 = round(coordinate['y2'],1)
+                else:
+                    x0 = round(coordinate['x0'], 1)
+                    x1 = round(coordinate['x1'], 1)
+                    x2 = round(coordinate['x2'], 1)
+                    y0 = round(coordinate['y0'], 1)
+                    y1 = round(coordinate['y1'], 1)
+                    y2 = round(coordinate['y2'], 1)
+                if (x == x0 or x == x1 or x == x2 or x == x0+radius or x == x1+radius or x == x2+radius or x == x0-radius or x == x1-radius or x == x2-radius) and (y == y0 or y == y1 or y == y2 or y == y0+radius or y == y1+radius or y == y2+radius or y == y0-radius or y == y1-radius or y == y2-radius):
                     self.dragging = True
                     self.x_grid_edit = x
                     self.y_grid_edit = y
@@ -733,28 +756,44 @@ class MainWindow(QMainWindow):
             y = event.ydata
             x_grid_edit = self.x_grid_edit
             y_grid_edit = self.y_grid_edit
+            if float(self.line_edit_part.text()) > 500:
+                radius = 0.1
+                y_grid_edit = round(y_grid_edit,1)
+                x_grid_edit = round(x_grid_edit,1)
 
+            else:
+                radius = 0.1
+                y_grid_edit = round(y_grid_edit, 1)
+                x_grid_edit = round(x_grid_edit, 1)
             for index in self.index_edit_triangle:
                 triangle = self.triangle_coordinates[index]
-                x0 = round(triangle['x0'], 1)
-                x1 = round(triangle['x1'], 1)
-                x2 = round(triangle['x2'], 1)
-                y0 = round(triangle['y0'], 1)
-                y1 = round(triangle['y1'], 1)
-                y2 = round(triangle['y2'], 1)
-                if (y0 == round(y_grid_edit, 1) and x0 == round(x_grid_edit, 1)) or (y0 == round(y_grid_edit, 1)+0.1 and x0 == round(x_grid_edit, 1)+0.1) or (y0 == round(y_grid_edit, 1)-0.1 and x0 == round(x_grid_edit, 1)-0.1):
+                if float(self.line_edit_part.text()) > 500:
+                    x0 = round(triangle['x0'],1)
+                    x1 = round(triangle['x1'],1)
+                    x2 = round(triangle['x2'],1)
+                    y0 = round(triangle['y0'],1)
+                    y1 = round(triangle['y1'],1)
+                    y2 = round(triangle['y2'],1)
+                else:
+                    x0 = round(triangle['x0'], 1)
+                    x1 = round(triangle['x1'], 1)
+                    x2 = round(triangle['x2'], 1)
+                    y0 = round(triangle['y0'], 1)
+                    y1 = round(triangle['y1'], 1)
+                    y2 = round(triangle['y2'], 1)
+                if (y0 == y_grid_edit and x0 == x_grid_edit) or (y0 == y_grid_edit+radius and x0 == x_grid_edit+radius) or (y0 == y_grid_edit-radius and x0 == x_grid_edit-radius) or (y0 == y_grid_edit-radius and x0 == x_grid_edit+radius) or (y0 == y_grid_edit+radius and x0 == x_grid_edit-radius):
                     triangle['y0'] = y
                     triangle['x0'] = x
                     self.y_grid_edit = y
                     self.x_grid_edit = x
 
-                if (y1 == round(y_grid_edit, 1) and x1 == round(x_grid_edit, 1)) or (y1 == round(y_grid_edit, 1)+0.1 and x1 == round(x_grid_edit, 1)+0.1) or (y1 == round(y_grid_edit, 1)-0.1 and x1 == round(x_grid_edit, 1)-0.1):
+                if (y1 == y_grid_edit and x1 == x_grid_edit) or (y1 == y_grid_edit+radius and x1 == x_grid_edit+radius) or (y1 == y_grid_edit-radius and x1 == x_grid_edit-radius) or (y1 == y_grid_edit-radius and x1 == x_grid_edit+radius) or (y1 == y_grid_edit+radius and x1 == x_grid_edit-radius):
                     triangle['y1'] = y
                     triangle['x1'] = x
                     self.y_grid_edit = y
                     self.x_grid_edit = x
 
-                if (y2 == round(y_grid_edit, 1) and x2 == round(x_grid_edit, 1)) or (y2 == round(y_grid_edit, 1)+0.1 and x2 == round(x_grid_edit, 1)+0.1) or (y2 == round(y_grid_edit, 1)-0.1 and x2 == round(x_grid_edit, 1)-0.1):
+                if (y2 == y_grid_edit and x2 == x_grid_edit) or (y2 == y_grid_edit+radius and x2 == x_grid_edit+radius) or (y2 == y_grid_edit-radius and x2 == x_grid_edit-radius) or (y2 == y_grid_edit-radius and x2 == x_grid_edit+radius) or (y2 == y_grid_edit+radius and x2 == x_grid_edit-radius):
                     triangle['y2'] = y
                     triangle['x2'] = x
                     self.y_grid_edit = y
