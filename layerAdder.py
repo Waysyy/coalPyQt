@@ -21,20 +21,50 @@ from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 from webcolors import rgb_to_name
 
+
+
+# Send a ping to confirm a successful connection
+#db = client['BazaProv']
+#collection_density = db['Plotnosti']
+#collection_krepi = db['Krepi']
+#docs = collection_density.distinct('Породы')
+#plot = collection_density.distinct('Плотность')
+#name_krep = collection_krepi.distinct('Название')
 uri = "mongodb+srv://vovabalaxoncev:Thcvovan7777@cluster0.u499jdc.mongodb.net/?retryWrites=true&w=majority"
 # Create a new client and connect to the server
-client = MongoClient(uri, server_api=ServerApi('1'))
-# Send a ping to confirm a successful connection
-db = client['BazaProv']
-collection_density = db['Plotnosti']
-collection_krepi = db['Krepi']
-docs = collection_density.distinct('Породы')
-plot = collection_density.distinct('Плотность')
-name_krep = collection_krepi.distinct('Название')
-
+#client = MongoClient(uri, server_api=ServerApi('1'))
+class MongoConnection:
+    def __init__(self, uri):
+        self.client = MongoClient(uri, server_api=ServerApi('1'))
+        self.db = self.client['BazaProv']
+        self.collection_density = self.db['Plotnosti']
+        self.collection_krepi = self.db['Krepi']
+        self.docs = self.collection_density.distinct('Породы')
+        self.plot = self.collection_density.distinct('Плотность')
+        self.name_krep = self.collection_krepi.distinct('Название')
+        
+    def get_docs(self):
+        return self.docs
+    def get_plot(self):
+        return self.plot
+    def get_name_krep(self):
+        return self.name_krep
+    def get_density_collection(self):
+        return self.collection_density
+    def get_krepi_collection(self):
+        return self.collection_krepi
+     
 class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
+
+        got_mongo = MongoConnection(uri)
+        docs = got_mongo.get_docs()
+        plot = got_mongo.get_plot()
+        name_krep = got_mongo.get_name_krep()
+        self.collection_krepi = got_mongo.get_krepi_collection()
+        self.collection_density = got_mongo.get_density_collection()
+
         self.setWindowTitle("График со слоями")
         self.setGeometry(100, 100, 800, 800)
 
@@ -495,7 +525,7 @@ class MainWindow(QMainWindow):
                     self.y_grid_edit = y
                     self.index_edit_triangle.append(index)
         if self.radio_krep.isChecked() and self.rectangles and event.button == MouseButton.LEFT:
-            result = collection_krepi.find({'Название': str(self.combobox_krep.currentText())})
+            result = self.collection_krepi.find({'Название': str(self.combobox_krep.currentText())})
             image_data = None
             long = None
             for doc in result:
@@ -842,7 +872,7 @@ class MainWindow(QMainWindow):
             distance = float(self.line_edit_width_krep.text())
             coordinate_x1_distance = 0
             while coordinate_x1_distance < all_width:
-                result = collection_krepi.find({'Название': str(self.combobox_krep.currentText())})
+                result = self.collection_krepi.find({'Название': str(self.combobox_krep.currentText())})
                 image_data = None
                 long = None
                 for doc in result:
@@ -968,7 +998,7 @@ class MainWindow(QMainWindow):
             msg.exec_()
             return
         rr = self.combobox_layer.currentText()
-        result = collection_density.find({'Породы': str(self.combobox_layer.currentText())})
+        result = self.collection_density.find({'Породы': str(self.combobox_layer.currentText())})
         rect_color = None
         density = None
         for doc in result:
