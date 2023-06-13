@@ -989,7 +989,7 @@ class MainWindow(QMainWindow):
         rect = patches.Rectangle((x, y), width, height, facecolor=rect_color)
         rect.set_label(rect_name)
         self.rectangles.append(rect)
-        self.draw_rectangles()
+        self.draw_layer()
 
         if float(self.line_edit_part.text()) == 1:
             self.button_save.setEnabled(True)
@@ -1013,32 +1013,11 @@ class MainWindow(QMainWindow):
         }
         self.info_layers.append(layer_info)
 
-    def next_partition(self):
-        if (self.line_edit_part.text()).isdigit():
-            part = float(self.line_edit_part.text())
-        else:
-            msg = QMessageBox()
-            msg.setWindowTitle("Ошибка")
-            msg.setText("Ошибка разбиений")
-            msg.setIcon(QMessageBox.Warning)
-            msg.exec_()
-            return
-        if float(self.line_edit_part.text()) > 1:
-            self.save_current_partition()  # Сохранение информации о текущем разбиении
-            self.rectangles = []
-            self.draw_rectangles()
-            part = float(self.line_edit_part.text())
-            part -= 1
-            self.line_edit_part.setText(str(part))
-            self.button_save.setEnabled(False)
-            self.final_Y = 0
-            self.check_first = 0
-
     def undo_action(self):
         if self.rectangles:
             self.info_krep = []
             self.rectangles.pop()
-            self.draw_rectangles()
+            self.draw_layer()
             self.final_Y = self.final_Y - float(self.line_edit_thickness.text())
             self.current_partitions.pop()
             self.horizontal_lines = []
@@ -1047,7 +1026,7 @@ class MainWindow(QMainWindow):
             self.first_line_horizontal_check = True
             self.first_line_vertical_check = True
 
-    def draw_rectangles(self):
+    def draw_layer(self):
         if self.radio_edit.isChecked():
             self.axes.clear()
             for index, info_krep in enumerate(self.info_krep):
@@ -1179,7 +1158,7 @@ class MainWindow(QMainWindow):
 
             }
             self.triangle_coordinates.append(triangle_info)
-        self.draw_rectangles()
+        self.draw_layer()
         # self.canvas.draw()
         info_krep_images = []
         for index, info_krep in enumerate(self.info_krep):
