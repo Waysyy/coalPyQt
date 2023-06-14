@@ -106,6 +106,10 @@ class MainWindow(QMainWindow):
         self.button_add.setGeometry(10, 210, 210, 30)
         self.button_add.clicked.connect(self.add_layer)
 
+        self.button_clear = QPushButton("Сброс", self)
+        self.button_clear.setGeometry(10, 210, 210, 30)
+        self.button_clear.clicked.connect(self.clear_all)
+
         # self.button_next = QPushButton("Следующее разбиение", self)
         # self.button_next.setGeometry(10, 250, 210, 30)
         # self.button_next.clicked.connect(self.next_partition)
@@ -243,6 +247,7 @@ class MainWindow(QMainWindow):
         graph_panel_layout.addWidget(self.button_edit_grid)
         #top_panel_layout.addWidget(self.button_save)
         top_panel_layout.addWidget(self.button_save_1)
+        top_panel_layout.addWidget(self.button_clear)
         krepi_layout.addWidget(self.label_krep)
         krepi_layout.addWidget(self.combobox_krep)
         krepi_layout.addWidget(self.radio_krep)
@@ -764,7 +769,7 @@ class MainWindow(QMainWindow):
             self.axes.set_ylim(self.axes.get_ylim()[0] * 1.1, self.axes.get_ylim()[1] * 1.1)
 
         # Restore the cached background
-        self.canvas.restore_region(self.background)
+        #self.canvas.restore_region(self.background)
 
         # Redraw the updated canvas
         self.canvas.blit(self.axes.bbox)
@@ -774,7 +779,7 @@ class MainWindow(QMainWindow):
         if event.xdata is not None:
             self.label_coordinate.setText(f'Координаты: x {round(event.xdata,2)} y {round(event.ydata,2)}')
         if self.pressed:
-            dx = (event.x - self.prev_x) * self.translation_factor
+            dx = (event.x - self.prev_x) * 1
             dy = (event.y - self.prev_y) * self.translation_factor
             self.current_x_lim = [self.axes.get_xlim()[0] - dx, self.axes.get_xlim()[1] - dx]
             self.current_y_lim = [self.axes.get_ylim()[0] + dy, self.axes.get_ylim()[1] + dy]
@@ -1257,6 +1262,49 @@ class MainWindow(QMainWindow):
             return True
         else:
             return False
+
+    def clear_all(self):
+        self.is_width_locked = False
+        self.auto_save_enabled = False
+        self.net_enabled = False
+
+        self.first_coordinate_line_y = 0
+        self.horizontal_lines = []
+        self.vertical_lines = []
+
+        self.info_krep = []
+
+        self.first_line_horizontal_check = True
+        self.first_line_vertical_check = True
+
+        self.dragging = False
+        self.x_grid_edit = 0
+        self.y_grid_edit = 0
+        self.current_x = 0
+        self.current_y = 0
+
+        self.pressed = False
+        self.prev_x = None
+        self.prev_y = None
+        self.translation_factor = 0.005  # Коэффициент перемещения
+        self.current_x_lim = None
+        self.current_y_lim = None
+
+        self.krep_coordinate = []
+        self.index_edit_triangle = []
+        self.rectangles = []
+
+        # список для хранения разбиений
+        self.partitions = []
+        self.info_layers = []
+        self.triangle_coordinates = []
+        self.axes.clear()
+
+        self.line_edit_thickness.setText('')
+        self.line_edit_width_krep.setText('')
+        self.line_edit_part.setText('')
+        self.line_edit_part.setReadOnly(False)
+        self.canvas.draw()
 
 class Save:
     def save_grid_information(self, triangle_coordinates, info_layers):
