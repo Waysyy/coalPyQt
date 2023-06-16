@@ -55,7 +55,7 @@ class MainWindow(QMainWindow):
         self.collection_krepi = got_mongo.get_krepi_collection()
         self.collection_density = got_mongo.get_density_collection()
 
-        self.setWindowTitle("График со слоями")
+        self.setWindowTitle("Подготовка к расчетам")
         self.setGeometry(100, 100, 800, 800)
 
         self.label_thickness = QLabel("Толщина:", self)
