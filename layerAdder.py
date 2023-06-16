@@ -3,6 +3,7 @@ import threading
 from tkinter import Tk, filedialog
 import io
 from PIL import Image
+from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget, \
     QInputDialog, QMessageBox, QRadioButton, QComboBox, QHBoxLayout, QStyleFactory
 from PyQt5.QtCore import Qt, QCoreApplication
@@ -1137,6 +1138,7 @@ class Save:
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     apply_stylesheet(app, theme='dark_blue.xml')
+    app.setWindowIcon(QIcon("icon.png"))
     window = MainWindow()
     window.show()
     sys.exit(app.exec_())
