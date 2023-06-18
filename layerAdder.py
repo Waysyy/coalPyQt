@@ -726,7 +726,7 @@ class Grid:
 
                 x1_vert = line_vertical['x1']
 
-                if first_w == 0:
+                if x1_vert <= x_pred:
                     x_pred = x1_vert
                     first_w += 1
                     continue
@@ -737,12 +737,12 @@ class Grid:
                 first_w += 1
 
             first_w = 0
-
+            y_pred = 0
             for line_horizontal in self.horizontal_lines:
 
                 y1_hor = line_horizontal['y1']
 
-                if first_w == 0:
+                if y1_hor <= y_pred:
                     y_pred = y1_hor
                     first_w += 1
                     continue
@@ -995,6 +995,16 @@ class Lines:
                         self.axes.plot([0, height],
                                        [self.first_coordinate_line_y + ylim, self.first_coordinate_line_y + ylim],
                                        color='red')
+                        for layer in self.info_layers:
+                            line_info = {
+                                'x0': 0,
+                                'x1': height,
+                                'y0': layer['y0'],
+                                'y1': layer['y0']
+                            }
+                            self.horizontal_lines.append(line_info)
+
+                            self.axes.plot([0, height], [layer['y0'], layer['y0']], color='red')
                         self.first_line_horizontal_check = False
                     if y + distance <= full_height:
                         line_info = {
