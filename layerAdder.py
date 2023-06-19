@@ -91,7 +91,7 @@ class MainWindow(QMainWindow):
         self.button_undo.clicked.connect(self.undo_action)
 
         self.grid = Grid
-        self.button_edit_grid = QPushButton("Подготовка к редактированию", self)
+        self.button_edit_grid = QPushButton("Подготовка к редактированию и сохранению", self)
         self.button_edit_grid.setGeometry(10, 210, 210, 30)
         self.button_edit_grid.clicked.connect(lambda: self.grid.create_grid(self))
 
