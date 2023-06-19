@@ -23,7 +23,7 @@ class MongoConnection:
     def __init__(self, uri):
         self.client = MongoClient(uri, server_api=ServerApi('1'))
         self.db = self.client['BazaProv']
-        self.collection_density = self.db['Plotnosti']
+        self.collection_density = self.db['Rocks']
         self.collection_krepi = self.db['Krepi']
         self.docs = self.collection_density.distinct('Породы')
         self.plot = self.collection_density.distinct('Плотность')
@@ -355,10 +355,6 @@ class MainWindow(QMainWindow):
             self.pressed = False
         self.dragging = False
 
-    def toggle_auto_save(self, state):
-        self.auto_save_enabled = state == Qt.Checked
-        self.button_save.setEnabled(self.auto_save_enabled)
-
     def toggle_vertical_line(self, checked):
         return
 
@@ -601,8 +597,6 @@ class Adder:
         self.rectangles.append(rect)
         self.draw_graph.draw_layer(self)
 
-        if float(self.line_edit_part.text()) == 1:
-            self.button_save.setEnabled(True)
 
         # Добавление информации о слое в текущее разбиение
         current_partition = {
