@@ -238,7 +238,8 @@ class MainWindow(QMainWindow):
         if self.radio_edit.isChecked() and event.button == MouseButton.LEFT:
             self.grid.grid_edit(self, event.xdata, event.ydata)
         if self.radio_krep.isChecked() and self.rectangles and event.button == MouseButton.LEFT:
-            self.adder.add_krep(self, event.xdata)
+            if float(self.line_edit_part.text()) >= event.xdata+4.9:
+                self.adder.add_krep(self, event.xdata)
         if event.button == MouseButton.LEFT:
             if self.info_layers:
                 self.lines.add_line(self, event.xdata, event.ydata)
@@ -432,18 +433,17 @@ class Adder:
     def add_krep(self, xdata):
         self.line_edit_part.setReadOnly(True)
         if self.info_layers:
-            if self.radio_krep.isChecked() and xdata:
+            if self.radio_krep.isChecked() and xdata is not None:
                 all_width = xdata + 1
                 distance = 0
                 coordinate_x1_distance = xdata
                 coordinate_final = 0
-            if (self.line_edit_part.text()).isdigit() and (self.line_edit_width_krep.text()).isdigit():
+            if (self.line_edit_part.text()).isdigit() and (self.line_edit_width_krep.text()).isdigit() and (xdata is None):
                 all_width = float(self.line_edit_part.text())
                 distance = float(self.line_edit_width_krep.text())
                 coordinate_x1_distance = 0
                 coordinate_final = 0
-            if not ((self.line_edit_part.text()).isdigit() or (self.line_edit_width_krep.text()).isdigit()) and not (
-            self.radio_krep.isChecked()):
+            if not ((self.line_edit_part.text()).isdigit() or (self.line_edit_width_krep.text()).isdigit()) and (xdata is None):
                 msg = QMessageBox()
                 msg.setWindowTitle("Ошибка")
                 msg.setText("Возникли проблемы со слоями!")
@@ -487,22 +487,22 @@ class Adder:
                 edit_height = abs(abs(y1) - abs(y) - height)
                 y1_edit = y1 - edit_height
 
-                point1_x += x1
-                point1_y += y1_edit
-                point2_x += x1
-                point2_y += y1_edit
-                point3_x += x1
-                point3_y += y1_edit
-                point4_x += x1
-                point4_y += y1_edit
-                point5_x += x1
-                point5_y += y1
-                point6_x += x1
-                point6_y += y1
-                point7_x += x1
-                point7_y += y1
-                point8_x += x1
-                point8_y += y1
+                point1_x_edit = x1 + point1_x
+                point1_y_edit = y1_edit + point1_y
+                point2_x_edit = x1+point2_x
+                point2_y_edit = y1_edit + point2_y
+                point3_x_edit = x1+point3_x
+                point3_y_edit = y1_edit + point3_y
+                point4_x_edit = x1+point4_x
+                point4_y_edit = y1_edit + point4_y
+                point5_x_edit = x1+point5_x
+                point5_y_edit = y1 + point5_y
+                point6_x_edit = x1 + point6_x
+                point6_y_edit = y1 + point6_y
+                point7_x_edit = x1+point7_x
+                point7_y_edit = y1 + point7_y
+                point8_x_edit = x1 + point8_x
+                point8_y_edit = y1 + point8_y
 
                 coordinate_info = {
                     'название': str(self.combobox_krep.currentText()),
@@ -511,22 +511,22 @@ class Adder:
                     'y1': y1,
                     'y': y,
                     'image': img,
-                    'point1_x': point1_x,
-                    'point1_y': point1_y,
-                    'point2_x': point2_x,
-                    'point2_y': point2_y,
-                    'point3_x': point3_x,
-                    'point3_y': point3_y,
-                    'point4_x': point4_x,
-                    'point4_y': point4_y,
-                    'point5_x': point5_x,
-                    'point5_y': point5_y,
-                    'point6_x': point6_x,
-                    'point6_y': point6_y,
-                    'point7_x': point7_x,
-                    'point7_y': point7_y,
-                    'point8_x': point8_x,
-                    'point8_y': point8_y,
+                    'point1_x': point1_x_edit,
+                    'point1_y': point1_y_edit,
+                    'point2_x': point2_x_edit,
+                    'point2_y': point2_y_edit,
+                    'point3_x': point3_x_edit,
+                    'point3_y': point3_y_edit,
+                    'point4_x': point4_x_edit,
+                    'point4_y': point4_y_edit,
+                    'point5_x': point5_x_edit,
+                    'point5_y': point5_y_edit,
+                    'point6_x': point6_x_edit,
+                    'point6_y': point6_y_edit,
+                    'point7_x': point7_x_edit,
+                    'point7_y': point7_y_edit,
+                    'point8_x': point8_x_edit,
+                    'point8_y': point8_y_edit,
                 }
                 self.info_krep.append(coordinate_info)
                 self.axes.imshow(img, extent=([x1, x, y1, y]), aspect='equal', zorder=10)
@@ -883,12 +883,13 @@ class Lines:
                                     'y0': self.first_coordinate_line_y,
                                     'y1': self.first_coordinate_line_y + ylim
                                 }
-                                self.vertical_lines.append(line_info)
+                                if line_info['x1'] <= height:
+                                    self.vertical_lines.append(line_info)
 
-                                self.axes.plot([info_krep[key], info_krep[key]],
-                                               [self.first_coordinate_line_y,
-                                                self.first_coordinate_line_y + ylim],
-                                               color='blue')
+                                    self.axes.plot([info_krep[key], info_krep[key]],
+                                                   [self.first_coordinate_line_y,
+                                                    self.first_coordinate_line_y + ylim],
+                                                   color='blue')
 
                     line_info = {
                         'x0': 0,
@@ -1028,11 +1029,12 @@ class Lines:
                                         'y0': self.first_coordinate_line_y,
                                         'y1': self.first_coordinate_line_y + ylim
                                     }
-                                    self.vertical_lines.append(line_info)
+                                    if line_info['x1'] <= full_width:
+                                        self.vertical_lines.append(line_info)
 
-                                    self.axes.plot([info_krep[key], info_krep[key]],
-                                                   [self.first_coordinate_line_y, self.first_coordinate_line_y + ylim],
-                                                   color='blue')
+                                        self.axes.plot([info_krep[key], info_krep[key]],
+                                                       [self.first_coordinate_line_y, self.first_coordinate_line_y + ylim],
+                                                       color='blue')
                         line_info = {
                             'x0': 0,
                             'x1': 0,
@@ -1078,8 +1080,18 @@ class Lines:
 
 class Save:
     def save_grid_information(self, triangle_coordinates, info_layers):
-        result = messagebox.askyesno("Сохранение","Хотите сохранить данные в базу данных?")
         if triangle_coordinates:
+            message_box = QMessageBox()
+            message_box.setWindowTitle("Сохранение")
+            message_box.setText("Хотите сохранить данные в базу данных?")
+
+            yes_button = message_box.addButton(QMessageBox.Yes)
+            yes_button.setText("Да")
+
+            no_button = message_box.addButton(QMessageBox.No)
+            no_button.setText("Нет")
+
+            message_box.exec_()
             cells = []
             for layer in info_layers:
                 x0_layer = layer['x0']
@@ -1123,7 +1135,7 @@ class Save:
                 sheet.cell(row=index, column=8).value = cell_info['y2']
                 sheet.cell(row=index, column=9).value = cell_info['density']
             # Обрабатываем выбранный ответ
-            if result:
+            if message_box.clickedButton() == yes_button:
                 got_mongo = MongoConnection(uri)
                 self.collection_result = got_mongo.get_result_collection()
                 got_mongo.collection_result.delete_many({})
@@ -1139,24 +1151,14 @@ class Save:
                                      "y2":cell_info['y2'],
                                      "Плотность":cell_info['density']}
                     got_mongo.collection_result.insert_one(save_document)
-                print("Сохраняем данные в базу данных")
-            else:
-                print("Отменяем сохранение в базу данных")
 
-            
-            
-                #got_mongo.collection_result.insert_one({"Название":cell_info['name']},{"Цвет":cell_info['color']},{"x0":cell_info['x0']},{"x1":cell_info['x1']},{"x2":cell_info['x2']},{"y0":cell_info['y0']},{"y1":cell_info['y1']},{"y2":cell_info['y2']},{"Плотность":cell_info['density']})
-                
+
             root = Tk()
             root.withdraw()
             file_path = filedialog.asksaveasfilename(defaultextension='.xlsx')
 
             if file_path:
-
                 workbook.save(file_path)
-                print("Excel file saved successfully.")
-            else:
-                print("Save operation canceled.")
 
             root.destroy()
         else:
