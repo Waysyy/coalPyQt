@@ -384,6 +384,11 @@ class MainWindow(QMainWindow):
             self.triangle_coordinates = []
             self.first_line_horizontal_check = True
             self.first_line_vertical_check = True
+            self.radio_vertical.setDisabled(False)
+            self.radio_horizontal.setDisabled(False)
+            self.radio_krep.setDisabled(False)
+            self.button_add_krep.setDisabled(False)
+            self.button_auto_part.setDisabled(False)
 
     def clear_all(self):
         self.is_width_locked = False
@@ -411,6 +416,9 @@ class MainWindow(QMainWindow):
         self.prev_y = None
         self.current_x_lim = None
         self.current_y_lim = None
+        self.radio_vertical.setDisabled(False)
+        self.radio_horizontal.setDisabled(False)
+        self.radio_krep.setDisabled(False)
 
         self.krep_coordinate = []
         self.index_edit_triangle = []
@@ -426,13 +434,15 @@ class MainWindow(QMainWindow):
         self.line_edit_width_krep.setText('')
         self.line_edit_part.setText('')
         self.line_edit_part.setReadOnly(False)
+        self.button_add_krep.setDisabled(False)
+        self.button_auto_part.setDisabled(False)
         self.canvas.draw()
 
 
 class Adder:
     def add_krep(self, xdata):
-        self.line_edit_part.setReadOnly(True)
         if self.info_layers:
+            self.line_edit_part.setReadOnly(True)
             if self.radio_krep.isChecked() and xdata is not None:
                 all_width = xdata + 1
                 distance = 0
@@ -443,7 +453,7 @@ class Adder:
                 distance = float(self.line_edit_width_krep.text())
                 coordinate_x1_distance = 0
                 coordinate_final = 0
-            if not ((self.line_edit_part.text()).isdigit() or (self.line_edit_width_krep.text()).isdigit()) and (xdata is None):
+            if ( not(self.line_edit_part.text()).isdigit() or not (self.line_edit_width_krep.text()).isdigit()) and (xdata is None):
                 msg = QMessageBox()
                 msg.setWindowTitle("Ошибка")
                 msg.setText("Возникли проблемы со слоями!")
@@ -557,6 +567,9 @@ class Adder:
         self.triangle_coordinates = []
         self.first_line_horizontal_check = True
         self.first_line_vertical_check = True
+        self.radio_vertical.setDisabled(False)
+        self.radio_horizontal.setDisabled(False)
+        self.radio_krep.setDisabled(False)
         self.current_x_lim = [self.axes.get_xlim()[0] * 0.9, self.axes.get_xlim()[1] * 0.9]
         self.current_y_lim = [self.axes.get_ylim()[0] * 0.9, self.axes.get_ylim()[1] * 0.9]
         if (self.line_edit_thickness.text()).isdigit():
@@ -711,6 +724,12 @@ class DrawFigure:
 class Grid:
     def create_grid(self):
         if self.vertical_lines and self.horizontal_lines:
+            self.button_add_krep.setDisabled(True)
+            self.button_auto_part.setDisabled(True)
+            self.radio_vertical.setDisabled(True)
+            self.radio_horizontal.setDisabled(True)
+            self.radio_krep.setDisabled(True)
+            self.button_add_krep.setDisabled(True)
             self.vertical_lines = sorted(self.vertical_lines, key=lambda line: line['x0'])
             self.horizontal_lines = sorted(self.horizontal_lines, key=lambda line: line['y0'])
 
@@ -814,6 +833,8 @@ class Lines:
             height_sum = sum(partition['thickness'] for partition in self.current_partitions)
             ylim = height_sum
             if self.radio_horizontal.isChecked():
+                self.radio_krep.setDisabled(True)
+                self.button_add_krep.setDisabled(True)
                 if self.first_line_horizontal_check:
                     if self.info_krep:
                         info_krep = self.info_krep[0]
@@ -873,6 +894,8 @@ class Lines:
 
             if self.radio_vertical.isChecked():
                 if self.first_line_vertical_check:
+                    self.radio_krep.setDisabled(True)
+                    self.button_add_krep.setDisabled(True)
                     if self.info_krep:
                         for index, info_krep in enumerate(self.info_krep):
                             for i in range(4):
@@ -945,6 +968,8 @@ class Lines:
             full_height = abs(self.info_layers[0]['y0']) + abs(self.info_layers[len(self.info_layers) - 1]['y1'])
             full_width = abs(self.info_layers[0]['x0']) + abs(self.info_layers[len(self.info_layers) - 1]['x1'])
             if ok:
+                self.radio_krep.setDisabled(True)
+                self.button_add_krep.setDisabled(True)
                 height_sum = sum(partition['thickness'] for partition in self.current_partitions)
                 ylim = height_sum
                 x = 0
