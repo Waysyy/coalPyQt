@@ -1,6 +1,6 @@
 import sys
 import threading
-from tkinter import Tk, filedialog
+from tkinter import Tk, filedialog, messagebox
 import io
 from PIL import Image
 from PyQt5.QtGui import QIcon
@@ -25,6 +25,7 @@ class MongoConnection:
         self.db = self.client['BazaProv']
         self.collection_density = self.db['Rocks']
         self.collection_krepi = self.db['Krepi']
+        self.collection_result = self.db['Result']
         self.docs = self.collection_density.distinct('Породы')
         self.plot = self.collection_density.distinct('Плотность')
         self.name_krep = self.collection_krepi.distinct('Название')
@@ -43,6 +44,9 @@ class MongoConnection:
 
     def get_krepi_collection(self):
         return self.collection_krepi
+    
+    def get_result_collection(self):
+        return self.collection_result
 
 
 class MainWindow(QMainWindow):
@@ -1074,6 +1078,7 @@ class Lines:
 
 class Save:
     def save_grid_information(self, triangle_coordinates, info_layers):
+        result = messagebox.askyesno("Сохранение","Хотите сохранить данные в базу данных?")
         if triangle_coordinates:
             cells = []
             for layer in info_layers:
@@ -1099,7 +1104,6 @@ class Save:
 
                         }
                         cells.append(cell_info)
-
             workbook = openpyxl.Workbook()
             sheet = workbook.active
 
@@ -1118,7 +1122,31 @@ class Save:
                 sheet.cell(row=index, column=7).value = cell_info['y1']
                 sheet.cell(row=index, column=8).value = cell_info['y2']
                 sheet.cell(row=index, column=9).value = cell_info['density']
+            # Обрабатываем выбранный ответ
+            if result:
+                got_mongo = MongoConnection(uri)
+                self.collection_result = got_mongo.get_result_collection()
+                got_mongo.collection_result.delete_many({})
+                # Добавляем код сохранения в базу данных
+                for index, cell_info in enumerate(cells, start=3):
+                    save_document = {"Название":cell_info['name'],
+                                     "Цвет":cell_info['color'],
+                                     "x0":cell_info['x0'],
+                                     "x1":cell_info['x1'],
+                                     "x2":cell_info['x2'],
+                                     "y0":cell_info['y0'],
+                                     "y1":cell_info['y1'],
+                                     "y2":cell_info['y2'],
+                                     "Плотность":cell_info['density']}
+                    got_mongo.collection_result.insert_one(save_document)
+                print("Сохраняем данные в базу данных")
+            else:
+                print("Отменяем сохранение в базу данных")
 
+            
+            
+                #got_mongo.collection_result.insert_one({"Название":cell_info['name']},{"Цвет":cell_info['color']},{"x0":cell_info['x0']},{"x1":cell_info['x1']},{"x2":cell_info['x2']},{"y0":cell_info['y0']},{"y1":cell_info['y1']},{"y2":cell_info['y2']},{"Плотность":cell_info['density']})
+                
             root = Tk()
             root.withdraw()
             file_path = filedialog.asksaveasfilename(defaultextension='.xlsx')
